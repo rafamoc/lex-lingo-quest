@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -18,17 +18,29 @@ interface Module {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [userXP] = useState(250);
+  const [userXP, setUserXP] = useState(0);
   const [streak] = useState(5);
-  const [level] = useState(3);
+  const [level, setLevel] = useState(1);
+  const [completedModules, setCompletedModules] = useState<Record<number, number>>({});
 
-  const modules: Module[] = [
+  // Load progress from localStorage
+  useEffect(() => {
+    const savedProgress = localStorage.getItem('lexlingo-progress');
+    if (savedProgress) {
+      const progress = JSON.parse(savedProgress);
+      setUserXP(progress.xp || 0);
+      setLevel(progress.level || 1);
+      setCompletedModules(progress.completedModules || {});
+    }
+  }, []);
+
+  const baseModules: Module[] = [
     {
       id: 1,
       title: "Fundamentos das Obrigações",
       description: "Conceitos básicos e fontes das obrigações no Direito Civil",
       lessons: 10,
-      completed: 6,
+      completed: 0,
       locked: false,
       icon: <BookOpen className="w-6 h-6" />,
     },
@@ -51,6 +63,22 @@ const Dashboard = () => {
       icon: <Scale className="w-6 h-6" />,
     },
   ];
+
+  // Apply completion data and unlock logic
+  const modules = baseModules.map((module, index) => {
+    const completed = completedModules[module.id] || 0;
+    const prevModule = index > 0 ? baseModules[index - 1] : null;
+    const prevCompleted = prevModule ? completedModules[prevModule.id] || 0 : module.lessons;
+    
+    // Unlock if previous module is completed (or if first module)
+    const locked = index === 0 ? false : prevCompleted < prevModule!.lessons;
+
+    return {
+      ...module,
+      completed,
+      locked,
+    };
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -165,7 +193,9 @@ const Dashboard = () => {
           <Card className="bg-gradient-to-br from-primary/10 to-primary/5">
             <CardContent className="pt-6 text-center">
               <Trophy className="w-8 h-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold text-foreground">6</p>
+              <p className="text-2xl font-bold text-foreground">
+                {Object.values(completedModules).reduce((sum, val) => sum + val, 0)}
+              </p>
               <p className="text-sm text-muted-foreground">Lições completas</p>
             </CardContent>
           </Card>

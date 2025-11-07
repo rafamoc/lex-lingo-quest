@@ -97,7 +97,24 @@ const Lesson = () => {
       setSelectedAnswer(null);
       setShowFeedback(false);
     } else {
+      // Save progress to localStorage
+      const savedProgress = localStorage.getItem('lexlingo-progress');
+      const progress = savedProgress ? JSON.parse(savedProgress) : { xp: 0, level: 1, completedModules: {} };
+      
       const xpEarned = correctAnswers * 10;
+      const newXP = progress.xp + xpEarned;
+      const newLevel = Math.floor(newXP / 300) + 1;
+      
+      // Update completed lessons for this module
+      const currentModuleId = parseInt(moduleId || "1");
+      const currentCompleted = progress.completedModules[currentModuleId] || 0;
+      progress.completedModules[currentModuleId] = currentCompleted + 1;
+      
+      progress.xp = newXP;
+      progress.level = newLevel;
+      
+      localStorage.setItem('lexlingo-progress', JSON.stringify(progress));
+      
       toast.success("Lição completa! 🏆", {
         description: `Você ganhou ${xpEarned} XP!`,
       });
