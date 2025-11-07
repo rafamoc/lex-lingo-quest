@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Scale, Trophy, Flame, BookOpen, Lock, CheckCircle2 } from "lucide-react";
+import { Scale, Trophy, Flame, BookOpen, Lock, CheckCircle2, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Module {
   id: number;
@@ -19,20 +21,61 @@ interface Module {
 const Dashboard = () => {
   const navigate = useNavigate();
   const [userXP, setUserXP] = useState(0);
-  const [streak] = useState(5);
+  const [streak, setStreak] = useState(0);
   const [level, setLevel] = useState(1);
   const [completedModules, setCompletedModules] = useState<Record<number, number>>({});
+  const [loading, setLoading] = useState(true);
 
-  // Load progress from localStorage
+  // Load progress from database
   useEffect(() => {
-    const savedProgress = localStorage.getItem('lexlingo-progress');
-    if (savedProgress) {
-      const progress = JSON.parse(savedProgress);
-      setUserXP(progress.xp || 0);
-      setLevel(progress.level || 1);
-      setCompletedModules(progress.completedModules || {});
-    }
-  }, []);
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        navigate("/auth");
+        return;
+      }
+
+      // Fetch user profile and progress
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+
+      if (profile) {
+        setUserXP(profile.xp);
+        setLevel(profile.level);
+        setStreak(profile.streak);
+      }
+
+      // Fetch module progress
+      const { data: progress } = await supabase
+        .from("module_progress")
+        .select("*")
+        .eq("user_id", session.user.id);
+
+      if (progress) {
+        const progressMap: Record<number, number> = {};
+        progress.forEach((p) => {
+          progressMap[p.module_id] = p.lessons_completed;
+        });
+        setCompletedModules(progressMap);
+      }
+
+      setLoading(false);
+    };
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const baseModules: Module[] = [
     {
@@ -80,6 +123,20 @@ const Dashboard = () => {
     };
   });
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Logout realizado com sucesso!");
+    navigate("/auth");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -99,6 +156,9 @@ const Dashboard = () => {
                 <Trophy className="w-5 h-5 text-primary" />
                 <span className="font-bold text-foreground">{userXP} XP</span>
               </div>
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                <LogOut className="w-5 h-5" />
+              </Button>
             </div>
           </div>
         </div>

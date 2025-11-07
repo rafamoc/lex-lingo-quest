@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Question {
   id: number;
@@ -63,6 +64,16 @@ const Lesson = () => {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/auth");
+      }
+    };
+    checkAuth();
+  }, [navigate]);
   const [answeredQuestions, setAnsweredQuestions] = useState(0);
 
   const question = questions[currentQuestion];
@@ -91,30 +102,70 @@ const Lesson = () => {
     }
   };
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
       setSelectedAnswer(null);
       setShowFeedback(false);
     } else {
-      // Save progress to localStorage
-      const savedProgress = localStorage.getItem('lexlingo-progress');
-      const progress = savedProgress ? JSON.parse(savedProgress) : { xp: 0, level: 1, completedModules: {} };
+      // Save progress to database
+      const { data: { session } } = await supabase.auth.getSession();
       
+      if (!session) {
+        navigate("/auth");
+        return;
+      }
+
       const xpEarned = correctAnswers * 10;
-      const newXP = progress.xp + xpEarned;
-      const newLevel = Math.floor(newXP / 300) + 1;
       
-      // Update completed lessons for this module
-      const currentModuleId = parseInt(moduleId || "1");
-      const currentCompleted = progress.completedModules[currentModuleId] || 0;
-      progress.completedModules[currentModuleId] = currentCompleted + 1;
-      
-      progress.xp = newXP;
-      progress.level = newLevel;
-      
-      localStorage.setItem('lexlingo-progress', JSON.stringify(progress));
-      
+      // Get current profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+
+      if (profile) {
+        const newXP = profile.xp + xpEarned;
+        const newLevel = Math.floor(newXP / 300) + 1;
+
+        // Update profile
+        await supabase
+          .from("profiles")
+          .update({
+            xp: newXP,
+            level: newLevel,
+            last_active: new Date().toISOString(),
+          })
+          .eq("id", session.user.id);
+
+        // Update or insert module progress
+        const currentModuleId = parseInt(moduleId || "1");
+        const { data: existingProgress } = await supabase
+          .from("module_progress")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .eq("module_id", currentModuleId)
+          .maybeSingle();
+
+        if (existingProgress) {
+          await supabase
+            .from("module_progress")
+            .update({
+              lessons_completed: existingProgress.lessons_completed + 1,
+            })
+            .eq("id", existingProgress.id);
+        } else {
+          await supabase
+            .from("module_progress")
+            .insert({
+              user_id: session.user.id,
+              module_id: currentModuleId,
+              lessons_completed: 1,
+            });
+        }
+      }
+
       toast.success("Lição completa! 🏆", {
         description: `Você ganhou ${xpEarned} XP!`,
       });

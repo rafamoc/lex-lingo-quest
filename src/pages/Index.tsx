@@ -1,10 +1,21 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Scale, BookOpen, Trophy, Zap, Target, Brain } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if user is already logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate("/dashboard");
+      }
+    });
+  }, [navigate]);
 
   const features = [
     {
@@ -64,7 +75,7 @@ const Index = () => {
             <Button
               size="lg"
               className="text-lg h-14 px-8 font-semibold"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/auth")}
             >
               Começar Agora Grátis
             </Button>
@@ -159,7 +170,7 @@ const Index = () => {
           <Button
             size="lg"
             className="text-lg h-14 px-8 font-semibold"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/auth")}
           >
             Começar a Aprender Agora
           </Button>

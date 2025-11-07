@@ -14,7 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      module_progress: {
+        Row: {
+          created_at: string
+          id: string
+          lessons_completed: number
+          module_id: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lessons_completed?: number
+          module_id: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lessons_completed?: number
+          module_id?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          last_active: string | null
+          level: number
+          streak: number
+          updated_at: string
+          xp: number
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          last_active?: string | null
+          level?: number
+          streak?: number
+          updated_at?: string
+          xp?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_active?: string | null
+          level?: number
+          streak?: number
+          updated_at?: string
+          xp?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
