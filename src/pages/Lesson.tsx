@@ -59,7 +59,7 @@ const questions: Question[] = [
 
 const Lesson = () => {
   const navigate = useNavigate();
-  const { moduleId } = useParams();
+  const { topicId } = useParams();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -139,28 +139,28 @@ const Lesson = () => {
           })
           .eq("id", session.user.id);
 
-        // Update or insert module progress
-        const currentModuleId = parseInt(moduleId || "1");
+        // Update or insert topic progress
+        const currentTopicId = parseInt(topicId || "1");
         const { data: existingProgress } = await supabase
-          .from("module_progress")
+          .from("topic_progress")
           .select("*")
           .eq("user_id", session.user.id)
-          .eq("module_id", currentModuleId)
+          .eq("topic_id", currentTopicId)
           .maybeSingle();
 
         if (existingProgress) {
           await supabase
-            .from("module_progress")
+            .from("topic_progress")
             .update({
               lessons_completed: existingProgress.lessons_completed + 1,
             })
             .eq("id", existingProgress.id);
         } else {
           await supabase
-            .from("module_progress")
+            .from("topic_progress")
             .insert({
               user_id: session.user.id,
-              module_id: currentModuleId,
+              topic_id: currentTopicId,
               lessons_completed: 1,
             });
         }

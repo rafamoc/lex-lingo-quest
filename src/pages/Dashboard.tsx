@@ -2,20 +2,21 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Scale, Trophy, Flame, BookOpen, Lock, CheckCircle2, LogOut } from "lucide-react";
+import { Scale, Trophy, Flame, BookOpen, Lock, CheckCircle2, LogOut, Users, ArrowRightLeft, CheckCheck, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-interface Module {
+interface Track {
   id: number;
   title: string;
   description: string;
-  lessons: number;
-  completed: number;
+  icon: string;
+  order_index: number;
+  total_topics: number;
+  completed_topics: number;
   locked: boolean;
-  icon: React.ReactNode;
 }
 
 const Dashboard = () => {
@@ -23,12 +24,26 @@ const Dashboard = () => {
   const [userXP, setUserXP] = useState(0);
   const [streak, setStreak] = useState(0);
   const [level, setLevel] = useState(1);
-  const [completedModules, setCompletedModules] = useState<Record<number, number>>({});
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Icon mapping
+  const getIcon = (iconName: string) => {
+    const icons: Record<string, React.ReactNode> = {
+      BookOpen: <BookOpen className="w-6 h-6" />,
+      CheckCircle2: <CheckCircle2 className="w-6 h-6" />,
+      Scale: <Scale className="w-6 h-6" />,
+      Users: <Users className="w-6 h-6" />,
+      ArrowRightLeft: <ArrowRightLeft className="w-6 h-6" />,
+      CheckCheck: <CheckCheck className="w-6 h-6" />,
+      AlertTriangle: <AlertTriangle className="w-6 h-6" />,
+    };
+    return icons[iconName] || <BookOpen className="w-6 h-6" />;
+  };
 
   // Load progress from database
   useEffect(() => {
-    const checkAuth = async () => {
+    const loadData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -36,7 +51,7 @@ const Dashboard = () => {
         return;
       }
 
-      // Fetch user profile and progress
+      // Fetch user profile
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
@@ -49,24 +64,61 @@ const Dashboard = () => {
         setStreak(profile.streak);
       }
 
-      // Fetch module progress
-      const { data: progress } = await supabase
-        .from("module_progress")
+      // Fetch tracks
+      const { data: tracksData } = await supabase
+        .from("tracks")
+        .select("*")
+        .order("order_index");
+
+      // Fetch all topics for all tracks
+      const { data: topicsData } = await supabase
+        .from("topics")
+        .select("*");
+
+      // Fetch user progress
+      const { data: progressData } = await supabase
+        .from("topic_progress")
         .select("*")
         .eq("user_id", session.user.id);
 
-      if (progress) {
+      if (tracksData && topicsData) {
         const progressMap: Record<number, number> = {};
-        progress.forEach((p) => {
-          progressMap[p.module_id] = p.lessons_completed;
+        progressData?.forEach((p) => {
+          progressMap[p.topic_id] = p.lessons_completed;
         });
-        setCompletedModules(progressMap);
+
+        const tracksWithProgress = tracksData.map((track, index) => {
+          const trackTopics = topicsData.filter(t => t.track_id === track.id);
+          const completedTopics = trackTopics.filter(t => {
+            const completed = progressMap[t.id] || 0;
+            return completed >= t.total_lessons;
+          }).length;
+
+          const prevTrack = index > 0 ? tracksData[index - 1] : null;
+          const prevTrackTopics = prevTrack ? topicsData.filter(t => t.track_id === prevTrack.id) : [];
+          const prevCompleted = prevTrack ? prevTrackTopics.filter(t => {
+            const completed = progressMap[t.id] || 0;
+            return completed >= t.total_lessons;
+          }).length : trackTopics.length;
+          
+          // Unlock if previous track is completed (or if first track)
+          const locked = index === 0 ? false : prevCompleted < prevTrackTopics.length;
+
+          return {
+            ...track,
+            total_topics: trackTopics.length,
+            completed_topics: completedTopics,
+            locked,
+          };
+        });
+
+        setTracks(tracksWithProgress);
       }
 
       setLoading(false);
     };
 
-    checkAuth();
+    loadData();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
@@ -77,51 +129,9 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const baseModules: Module[] = [
-    {
-      id: 1,
-      title: "Fundamentos das Obrigações",
-      description: "Conceitos básicos e fontes das obrigações no Direito Civil",
-      lessons: 10,
-      completed: 0,
-      locked: false,
-      icon: <BookOpen className="w-6 h-6" />,
-    },
-    {
-      id: 2,
-      title: "Adimplemento e Extinção",
-      description: "Formas de cumprimento e extinção das obrigações",
-      lessons: 8,
-      completed: 0,
-      locked: true,
-      icon: <CheckCircle2 className="w-6 h-6" />,
-    },
-    {
-      id: 3,
-      title: "Inadimplemento",
-      description: "Mora, perdas e danos, e cláusula penal",
-      lessons: 12,
-      completed: 0,
-      locked: true,
-      icon: <Scale className="w-6 h-6" />,
-    },
-  ];
-
-  // Apply completion data and unlock logic
-  const modules = baseModules.map((module, index) => {
-    const completed = completedModules[module.id] || 0;
-    const prevModule = index > 0 ? baseModules[index - 1] : null;
-    const prevCompleted = prevModule ? completedModules[prevModule.id] || 0 : module.lessons;
-    
-    // Unlock if previous module is completed (or if first module)
-    const locked = index === 0 ? false : prevCompleted < prevModule!.lessons;
-
-    return {
-      ...module,
-      completed,
-      locked,
-    };
-  });
+  const totalCompletedLessons = tracks.reduce((sum, track) => {
+    return sum + track.completed_topics;
+  }, 0);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -183,54 +193,54 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Modules Section */}
+        {/* Tracks Section */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-foreground mb-4">Trilha de Aprendizado</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">Trilhas de Aprendizado</h2>
           
-          {modules.map((module, index) => (
+          {tracks.map((track, index) => (
             <Card
-              key={module.id}
+              key={track.id}
               className={`group hover:shadow-lg transition-all duration-300 ${
-                module.locked ? "opacity-60" : "cursor-pointer hover:scale-[1.02]"
+                track.locked ? "opacity-60" : "cursor-pointer hover:scale-[1.02]"
               }`}
-              onClick={() => !module.locked && navigate(`/lesson/${module.id}`)}
+              onClick={() => !track.locked && navigate(`/topics/${track.id}`)}
             >
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div
                     className={`w-14 h-14 rounded-xl flex items-center justify-center ${
-                      module.locked
+                      track.locked
                         ? "bg-muted"
                         : index === 0
                         ? "bg-primary/10 text-primary"
                         : "bg-secondary text-secondary-foreground"
                     }`}
                   >
-                    {module.locked ? <Lock className="w-6 h-6" /> : module.icon}
+                    {track.locked ? <Lock className="w-6 h-6" /> : getIcon(track.icon)}
                   </div>
 
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h3 className="text-lg font-bold text-foreground mb-1">{module.title}</h3>
-                        <p className="text-sm text-muted-foreground">{module.description}</p>
+                        <h3 className="text-lg font-bold text-foreground mb-1">{track.title}</h3>
+                        <p className="text-sm text-muted-foreground">{track.description}</p>
                       </div>
-                      {module.completed > 0 && !module.locked && (
+                      {track.completed_topics > 0 && !track.locked && (
                         <Badge variant="secondary" className="ml-2">
-                          {module.completed}/{module.lessons} lições
+                          {track.completed_topics}/{track.total_topics} tópicos
                         </Badge>
                       )}
                     </div>
 
-                    {!module.locked && (
+                    {!track.locked && (
                       <div className="mt-4">
-                        <Progress value={(module.completed / module.lessons) * 100} className="h-2" />
+                        <Progress value={(track.completed_topics / track.total_topics) * 100} className="h-2" />
                       </div>
                     )}
 
-                    {module.locked && (
+                    {track.locked && (
                       <p className="text-sm text-muted-foreground mt-2">
-                        Complete o módulo anterior para desbloquear
+                        Complete a trilha anterior para desbloquear
                       </p>
                     )}
                   </div>
@@ -254,9 +264,9 @@ const Dashboard = () => {
             <CardContent className="pt-6 text-center">
               <Trophy className="w-8 h-8 text-primary mx-auto mb-2" />
               <p className="text-2xl font-bold text-foreground">
-                {Object.values(completedModules).reduce((sum, val) => sum + val, 0)}
+                {totalCompletedLessons}
               </p>
-              <p className="text-sm text-muted-foreground">Lições completas</p>
+              <p className="text-sm text-muted-foreground">Tópicos completos</p>
             </CardContent>
           </Card>
 

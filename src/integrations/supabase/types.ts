@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      lessons: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: number
+          order_index: number
+          title: string
+          topic_id: number
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: number
+          order_index: number
+          title: string
+          topic_id: number
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: number
+          order_index?: number
+          title?: string
+          topic_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       module_progress: {
         Row: {
           created_at: string
@@ -76,6 +111,106 @@ export type Database = {
           streak?: number
           updated_at?: string
           xp?: number
+        }
+        Relationships: []
+      }
+      topic_progress: {
+        Row: {
+          created_at: string
+          id: string
+          lessons_completed: number
+          topic_id: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lessons_completed?: number
+          topic_id: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lessons_completed?: number
+          topic_id?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_progress_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topics: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: number
+          order_index: number
+          title: string
+          total_lessons: number
+          track_id: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          order_index: number
+          title: string
+          total_lessons?: number
+          track_id: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          order_index?: number
+          title?: string
+          total_lessons?: number
+          track_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topics_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tracks: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: number
+          order_index: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: number
+          order_index: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: number
+          order_index?: number
+          title?: string
         }
         Relationships: []
       }
