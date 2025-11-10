@@ -177,7 +177,10 @@ const Dashboard = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 max-w-4xl">
         {/* User Progress Card */}
-        <Card className="mb-8 border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+        <Card 
+          className="mb-8 border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all"
+          onClick={() => navigate("/levels")}
+        >
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <div>
