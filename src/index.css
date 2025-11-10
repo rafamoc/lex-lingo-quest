@@ -46,6 +46,9 @@ All colors MUST be HSL.
     --chart-3: 142 71% 45%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 82% 52%;
+    
+    /* Smooth color transitions */
+    transition: --primary 0.5s ease, --primary-foreground 0.5s ease, --accent 0.5s ease, --ring 0.5s ease;
   }
 
   .dark {
