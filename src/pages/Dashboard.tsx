@@ -252,7 +252,10 @@ const Dashboard = () => {
 
         {/* Achievement Section */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-gradient-to-br from-accent/10 to-accent/5">
+          <Card 
+            className="bg-gradient-to-br from-accent/10 to-accent/5 cursor-pointer hover:scale-105 transition-transform"
+            onClick={() => navigate("/streak")}
+          >
             <CardContent className="pt-6 text-center">
               <Flame className="w-8 h-8 text-accent mx-auto mb-2" />
               <p className="text-2xl font-bold text-foreground">{streak} dias</p>

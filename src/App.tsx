@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import Topics from "./pages/Topics";
 import Lesson from "./pages/Lesson";
 import Auth from "./pages/Auth";
+import StreakStats from "./pages/StreakStats";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/topics/:trackId" element={<Topics />} />
           <Route path="/lesson/:topicId" element={<Lesson />} />
+          <Route path="/streak" element={<StreakStats />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
