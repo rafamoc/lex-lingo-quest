@@ -191,8 +191,13 @@ const TheoryLesson = () => {
 
     if (returnToLesson) {
       toast.success("Voltando para a lição");
+      const progress = location.state?.lessonProgress;
+      if (progress) {
+        // Save to localStorage as backup
+        localStorage.setItem(`lessonProgress_${topicId}`, JSON.stringify(progress));
+      }
       navigate(`/lesson/${topicId}`, { 
-        state: { resumeProgress: location.state.lessonProgress } 
+        state: { resumeProgress: progress } 
       });
     } else {
       toast.success(alreadyCompleted ? "Indo para lições práticas" : "+30 XP ganhos!");
@@ -248,9 +253,16 @@ const TheoryLesson = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate(`/lesson/${topicId}`, { 
-                    state: { resumeProgress: location.state.lessonProgress } 
-                  })}
+                  onClick={() => {
+                    const progress = location.state?.lessonProgress;
+                    if (progress) {
+                      // Save to localStorage as backup
+                      localStorage.setItem(`lessonProgress_${topicId}`, JSON.stringify(progress));
+                    }
+                    navigate(`/lesson/${topicId}`, { 
+                      state: { resumeProgress: progress } 
+                    });
+                  }}
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Voltar para prática

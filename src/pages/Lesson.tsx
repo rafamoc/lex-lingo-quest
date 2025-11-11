@@ -72,14 +72,28 @@ const Lesson = () => {
 
   // Resume progress if returning from theory
   useEffect(() => {
+    // Try location.state first
     if (location.state?.resumeProgress) {
       const { currentQuestion: saved, selectedAnswer: savedAnswer, correctAnswers: savedCorrect, showFeedback: savedFeedback } = location.state.resumeProgress;
       setCurrentQuestion(saved);
       setSelectedAnswer(savedAnswer);
       setCorrectAnswers(savedCorrect);
       setShowFeedback(savedFeedback);
+      // Clear localStorage after restoring
+      localStorage.removeItem(`lessonProgress_${topicId}`);
+    } else {
+      // Fallback to localStorage if location.state is not available
+      const savedProgress = localStorage.getItem(`lessonProgress_${topicId}`);
+      if (savedProgress) {
+        const { currentQuestion: saved, selectedAnswer: savedAnswer, correctAnswers: savedCorrect, showFeedback: savedFeedback } = JSON.parse(savedProgress);
+        setCurrentQuestion(saved);
+        setSelectedAnswer(savedAnswer);
+        setCorrectAnswers(savedCorrect);
+        setShowFeedback(savedFeedback);
+        localStorage.removeItem(`lessonProgress_${topicId}`);
+      }
     }
-  }, [location.state]);
+  }, [location.state, topicId]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -234,17 +248,22 @@ const Lesson = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate(`/theory/${topicId}`, { 
-                state: { 
-                  returnToLesson: true,
-                  lessonProgress: {
-                    currentQuestion,
-                    selectedAnswer,
-                    correctAnswers,
-                    showFeedback,
+              onClick={() => {
+                const progress = {
+                  currentQuestion,
+                  selectedAnswer,
+                  correctAnswers,
+                  showFeedback,
+                };
+                // Save to localStorage as backup
+                localStorage.setItem(`lessonProgress_${topicId}`, JSON.stringify(progress));
+                navigate(`/theory/${topicId}`, { 
+                  state: { 
+                    returnToLesson: true,
+                    lessonProgress: progress
                   }
-                }
-              })}
+                });
+              }}
             >
               📘 Revisar teoria
             </Button>
