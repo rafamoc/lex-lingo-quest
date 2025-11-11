@@ -10,6 +10,8 @@ import { Loader2, RefreshCw, Save } from "lucide-react";
 
 interface Profile {
   id: string;
+  name: string | null;
+  email: string | null;
   xp: number;
   level: number;
   streak: number;
@@ -182,10 +184,10 @@ const AdminPanel = () => {
                     <SelectTrigger id="user-select" className="w-full">
                       <SelectValue placeholder="Escolha um usuário..." />
                     </SelectTrigger>
-                    <SelectContent className="bg-card border-border z-50">
+                    <SelectContent className="bg-card border-border z-50 max-h-[300px]">
                       {profiles.map((profile) => (
                         <SelectItem key={profile.id} value={profile.id}>
-                          {profile.id} (Level {profile.level}, {profile.xp} XP)
+                          {profile.name || 'Usuário'} {profile.email ? `<${profile.email}>` : ''} (Nível {profile.level} – {profile.xp} XP)
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -194,18 +196,36 @@ const AdminPanel = () => {
 
                 {selectedUser && (
                   <>
-                    {/* User Info */}
-                    <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        <strong>ID:</strong> {selectedUser.id}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Criado em:</strong> {new Date(selectedUser.created_at).toLocaleString('pt-BR')}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Última atividade:</strong> {selectedUser.last_active ? new Date(selectedUser.last_active).toLocaleString('pt-BR') : 'Nunca'}
-                      </p>
-                    </div>
+                    {/* User Identity Card */}
+                    <Card className="bg-primary/5 border-primary/20">
+                      <CardContent className="pt-6 space-y-3">
+                        <div className="space-y-1">
+                          <h3 className="text-xl font-bold text-foreground">
+                            {selectedUser.name || 'Usuário sem nome'}
+                          </h3>
+                          {selectedUser.email && (
+                            <p className="text-muted-foreground">{selectedUser.email}</p>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 pt-2">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Nível</p>
+                            <p className="text-lg font-semibold text-foreground">{selectedUser.level}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">XP Total</p>
+                            <p className="text-lg font-semibold text-foreground">{selectedUser.xp}</p>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 space-y-1 text-xs text-muted-foreground border-t border-border/50">
+                          <p><strong>ID:</strong> {selectedUser.id}</p>
+                          <p><strong>Criado em:</strong> {new Date(selectedUser.created_at).toLocaleString('pt-BR')}</p>
+                          <p><strong>Última atividade:</strong> {selectedUser.last_active ? new Date(selectedUser.last_active).toLocaleString('pt-BR') : 'Nunca'}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
 
                     {/* Edit Form */}
                     <div className="space-y-4">
