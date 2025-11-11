@@ -16,6 +16,7 @@ import Auth from "./pages/Auth";
 import StreakStats from "./pages/StreakStats";
 import LevelRoadmap from "./pages/LevelRoadmap";
 import NotFound from "./pages/NotFound";
+import AdminPanel from "./pages/321dd543-fe6e-4204-ae30-85f578708d9c";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const AnimatedRoutes = () => {
         <Route path="/lesson-complete" element={<PageTransition><LessonComplete /></PageTransition>} />
         <Route path="/streak" element={<PageTransition><StreakStats /></PageTransition>} />
         <Route path="/levels" element={<PageTransition><LevelRoadmap /></PageTransition>} />
+        <Route path="/321dd543-fe6e-4204-ae30-85f578708d9c" element={<PageTransition><AdminPanel /></PageTransition>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
       </Routes>
