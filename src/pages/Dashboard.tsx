@@ -1,8 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react"; 
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Scale, Trophy, Flame, BookOpen, Lock, CheckCircle2, LogOut, Users, ArrowRightLeft, CheckCheck, AlertTriangle } from "lucide-react";
+import { 
+  Scale, Trophy, Flame, BookOpen, Lock, CheckCircle2, 
+  LogOut, Users, ArrowRightLeft, CheckCheck, AlertTriangle 
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -158,11 +161,11 @@ const Dashboard = () => {
               <h1 className="text-2xl font-bold text-foreground">LexLingo</h1>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-4 py-2 bg-accent/10 rounded-full">
+              <div className="flex items-center gap-2 px-4 py-2 bg-accent/10 rounded-full cursor-pointer hover:scale-[1.10] hover:shadow-lg" onClick={() => navigate("/streak")} >
                 <Flame className="w-5 h-5 text-accent" />
                 <span className="font-bold text-foreground">{streak}</span>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full">
+              <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full cursor-pointer hover:scale-[1.10] hover:shadow-lg" onClick={() => navigate("/levels")}>
                 <Trophy className="w-5 h-5 text-primary" />
                 <span className="font-bold text-foreground">{userXP} XP</span>
               </div>
@@ -200,57 +203,67 @@ const Dashboard = () => {
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-foreground mb-4">Trilhas de Aprendizado</h2>
           
-          {tracks.map((track, index) => (
-            <Card
-              key={track.id}
-              className={`group hover:shadow-lg transition-all duration-300 ${
-                track.locked ? "opacity-60" : "cursor-pointer hover:scale-[1.02]"
-              }`}
-              onClick={() => !track.locked && navigate(`/topics/${track.id}`)}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div
-                    className={`w-14 h-14 rounded-xl flex items-center justify-center ${
-                      track.locked
-                        ? "bg-muted"
-                        : index === 0
-                        ? "bg-primary/10 text-primary"
-                        : "bg-secondary text-secondary-foreground"
-                    }`}
-                  >
-                    {track.locked ? <Lock className="w-6 h-6" /> : getIcon(track.icon)}
-                  </div>
-
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="text-lg font-bold text-foreground mb-1">{track.title}</h3>
-                        <p className="text-sm text-muted-foreground">{track.description}</p>
+          {tracks.map((track, index) => {
+            const isCompleted = track.completed_topics === track.total_topics;
+            return (
+              <Card
+                key={track.id}
+                className={`group hover:shadow-lg transition-all duration-300 ${
+                  track.locked ? "opacity-60" : "cursor-pointer hover:scale-[1.02]"
+                }`}
+                onClick={() => !track.locked && navigate(`/topics/${track.id}`)}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    {/* Ícone com check verde */}
+                    <div className="relative w-14 h-14">
+                      <div
+                        className={`w-14 h-14 rounded-xl flex items-center justify-center ${
+                          track.locked
+                            ? "bg-muted"
+                            : isCompleted
+                            ? "bg-primary/10 text-primary"
+                            : "bg-secondary text-secondary-foreground"
+                        }`}
+                      >
+                        {track.locked ? <Lock className="w-6 h-6" /> : getIcon(track.icon)}
                       </div>
-                      {track.completed_topics > 0 && !track.locked && (
-                        <Badge variant="secondary" className="ml-2">
-                          {track.completed_topics}/{track.total_topics} tópicos
-                        </Badge>
+
+                      {isCompleted && !track.locked && (
+                        <CheckCircle2 className="absolute bottom-0 right-0 w-5 h-5 text-green-500 bg-background rounded-full shadow-sm" />
                       )}
                     </div>
 
-                    {!track.locked && (
-                      <div className="mt-4">
-                        <Progress value={(track.completed_topics / track.total_topics) * 100} className="h-2" />
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h3 className="text-lg font-bold text-foreground mb-1">{track.title}</h3>
+                          <p className="text-sm text-muted-foreground">{track.description}</p>
+                        </div>
+                        {track.completed_topics > 0 && !track.locked && (
+                          <Badge variant="secondary" className="ml-2">
+                            {track.completed_topics}/{track.total_topics} tópicos
+                          </Badge>
+                        )}
                       </div>
-                    )}
 
-                    {track.locked && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Complete a trilha anterior para desbloquear
-                      </p>
-                    )}
+                      {!track.locked && (
+                        <div className="mt-4">
+                          <Progress value={(track.completed_topics / track.total_topics) * 100} className="h-2" />
+                        </div>
+                      )}
+
+                      {track.locked && (
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Complete a trilha anterior para desbloquear
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Achievement Section */}
