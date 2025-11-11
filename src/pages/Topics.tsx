@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Scale, ArrowLeft, Lock, BookOpen } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Scale, ArrowLeft, Lock, BookOpen, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -137,61 +135,119 @@ const Topics = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-foreground mb-4">Tópicos</h2>
-          
-          {topics.map((topic, index) => (
-            <Card
-              key={topic.id}
-              className={`group hover:shadow-lg transition-all duration-300 ${
-                topic.locked ? "opacity-60" : "cursor-pointer hover:scale-[1.02]"
-              }`}
-              onClick={() => !topic.locked && navigate(`/lesson/${topic.id}`)}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
+      <main className="container mx-auto px-4 py-8 max-w-5xl">
+        {/* Legend */}
+        <div className="mb-8 bg-card/50 rounded-lg p-4 border border-border">
+          <div className="flex flex-wrap gap-6 justify-center text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full border-4 border-accent"></div>
+              <span className="text-muted-foreground">Anel dourado: progresso nas lições</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Crown className="w-6 h-6 text-accent" />
+              <span className="text-muted-foreground">Coroa: vezes que completou todas as lições</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Skills Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center">
+          {topics.map((topic, index) => {
+            const progressPercentage = (topic.lessons_completed / topic.total_lessons) * 100;
+            const completionCount = Math.floor(topic.lessons_completed / topic.total_lessons);
+            const isCompleted = topic.lessons_completed >= topic.total_lessons;
+            
+            return (
+              <div
+                key={topic.id}
+                className={`flex flex-col items-center gap-3 ${
+                  topic.locked ? "opacity-50" : "cursor-pointer"
+                } transition-all duration-300 hover:scale-105`}
+                onClick={() => !topic.locked && navigate(`/lesson/${topic.id}`)}
+              >
+                {/* Circular Skill */}
+                <div className="relative">
+                  {/* Progress Ring */}
+                  <svg className="w-32 h-32 transform -rotate-90">
+                    {/* Background circle */}
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="58"
+                      fill="none"
+                      stroke="hsl(var(--muted))"
+                      strokeWidth="8"
+                    />
+                    {/* Progress circle */}
+                    {!topic.locked && (
+                      <circle
+                        cx="64"
+                        cy="64"
+                        r="58"
+                        fill="none"
+                        stroke="hsl(var(--accent))"
+                        strokeWidth="8"
+                        strokeDasharray={`${2 * Math.PI * 58}`}
+                        strokeDashoffset={`${2 * Math.PI * 58 * (1 - progressPercentage / 100)}`}
+                        strokeLinecap="round"
+                        className="transition-all duration-500"
+                      />
+                    )}
+                  </svg>
+
+                  {/* Inner Circle with Icon */}
                   <div
-                    className={`w-14 h-14 rounded-xl flex items-center justify-center ${
+                    className={`absolute inset-0 m-4 rounded-full flex items-center justify-center ${
                       topic.locked
                         ? "bg-muted"
+                        : isCompleted
+                        ? "bg-accent/20"
                         : index === 0
-                        ? "bg-primary/10 text-primary"
-                        : "bg-secondary text-secondary-foreground"
+                        ? "bg-primary/10"
+                        : "bg-secondary"
                     }`}
                   >
-                    {topic.locked ? <Lock className="w-6 h-6" /> : <BookOpen className="w-6 h-6" />}
+                    {topic.locked ? (
+                      <Lock className="w-10 h-10 text-muted-foreground" />
+                    ) : (
+                      <BookOpen
+                        className={`w-10 h-10 ${
+                          isCompleted ? "text-accent" : "text-primary"
+                        }`}
+                      />
+                    )}
                   </div>
 
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="text-lg font-bold text-foreground mb-1">{topic.title}</h3>
-                        <p className="text-sm text-muted-foreground">{topic.description}</p>
+                  {/* Crown Badge */}
+                  {!topic.locked && completionCount > 0 && (
+                    <div className="absolute -bottom-1 -right-1 bg-accent rounded-full w-10 h-10 flex items-center justify-center shadow-lg border-2 border-background">
+                      <div className="flex flex-col items-center">
+                        <Crown className="w-5 h-5 text-accent-foreground" />
+                        <span className="text-xs font-bold text-accent-foreground -mt-1">
+                          {completionCount}
+                        </span>
                       </div>
-                      {topic.lessons_completed > 0 && !topic.locked && (
-                        <Badge variant="secondary" className="ml-2">
-                          {topic.lessons_completed}/{topic.total_lessons} lições
-                        </Badge>
-                      )}
                     </div>
-
-                    {!topic.locked && (
-                      <div className="mt-4">
-                        <Progress value={(topic.lessons_completed / topic.total_lessons) * 100} className="h-2" />
-                      </div>
-                    )}
-
-                    {topic.locked && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Complete o tópico anterior para desbloquear
-                      </p>
-                    )}
-                  </div>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                {/* Topic Info */}
+                <div className="text-center max-w-[200px]">
+                  <h3 className="text-base font-bold text-foreground mb-1">{topic.title}</h3>
+                  {!topic.locked && (
+                    <Badge variant="secondary" className="text-xs">
+                      {topic.lessons_completed}/{topic.total_lessons} lições
+                    </Badge>
+                  )}
+                  {topic.locked && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Complete o anterior
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </main>
     </div>
