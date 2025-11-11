@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { DailyGoalFooter } from "@/components/DailyGoalFooter";
 
 interface Track {
   id: number;
@@ -178,7 +179,7 @@ const Dashboard = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <main className="container mx-auto px-4 py-8 max-w-4xl pb-24">
         {/* User Progress Card */}
         <Card 
           className="mb-8 border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5 cursor-pointer hover:scale-[1.02] hover:shadow-lg transition-all"
@@ -298,6 +299,9 @@ const Dashboard = () => {
           </Card>
         </div>
       </main>
+
+      {/* Daily Goal Footer */}
+      <DailyGoalFooter />
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { updateDailyProgress } from "@/hooks/useDailyGoal";
 
 interface Question {
   id: number;
@@ -139,6 +140,9 @@ const Lesson = () => {
           })
           .eq("id", session.user.id);
 
+        // Update daily progress
+        await updateDailyProgress(xpEarned);
+
         // Update or insert topic progress
         const currentTopicId = parseInt(topicId || "1");
         const { data: existingProgress } = await supabase
@@ -166,10 +170,20 @@ const Lesson = () => {
         }
       }
 
-      toast.success("Lição completa! 🏆", {
-        description: `Você ganhou ${xpEarned} XP!`,
+      // Get track_id from topic
+      const { data: topicData } = await supabase
+        .from("topics")
+        .select("track_id")
+        .eq("id", parseInt(topicId || "1"))
+        .single();
+
+      // Navigate to lesson complete screen
+      navigate("/lesson-complete", { 
+        state: { 
+          xpEarned, 
+          trackId: topicData?.track_id || 1 
+        } 
       });
-      setTimeout(() => navigate("/dashboard"), 2000);
     }
   };
 

@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Topics from "./pages/Topics";
 import Lesson from "./pages/Lesson";
+import LessonComplete from "./pages/LessonComplete";
 import Auth from "./pages/Auth";
 import StreakStats from "./pages/StreakStats";
 import LevelRoadmap from "./pages/LevelRoadmap";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/topics/:trackId" element={<Topics />} />
             <Route path="/lesson/:topicId" element={<Lesson />} />
+            <Route path="/lesson-complete" element={<LessonComplete />} />
             <Route path="/streak" element={<StreakStats />} />
             <Route path="/levels" element={<LevelRoadmap />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Scale, ArrowLeft, Lock, BookOpen, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { DailyGoalFooter } from "@/components/DailyGoalFooter";
 
 interface Topic {
   id: number;
@@ -135,7 +136,7 @@ const Topics = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
+      <main className="container mx-auto px-4 py-8 max-w-5xl pb-24">
         {/* Legend */}
         <div className="mb-8 bg-card/50 rounded-lg p-4 border border-border">
           <div className="flex flex-wrap gap-6 justify-center text-sm">
@@ -271,6 +272,9 @@ const Topics = () => {
           })()}
         </div>
       </main>
+
+      {/* Daily Goal Footer */}
+      <DailyGoalFooter />
     </div>
   );
 };
