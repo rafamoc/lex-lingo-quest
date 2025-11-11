@@ -150,104 +150,125 @@ const Topics = () => {
           </div>
         </div>
 
-        {/* Skills Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center">
-          {topics.map((topic, index) => {
-            const progressPercentage = (topic.lessons_completed / topic.total_lessons) * 100;
-            const completionCount = Math.floor(topic.lessons_completed / topic.total_lessons);
-            const isCompleted = topic.lessons_completed >= topic.total_lessons;
-            
-            return (
+        {/* Skills Layout - Duolingo Style */}
+        <div className="flex flex-col gap-8">
+          {(() => {
+            const pattern = [1, 2, 3, 2, 1]; // Duolingo-style funnel pattern
+            const rows: Topic[][] = [];
+            let currentIndex = 0;
+            let patternIndex = 0;
+
+            while (currentIndex < topics.length) {
+              const itemsInRow = pattern[patternIndex % pattern.length];
+              rows.push(topics.slice(currentIndex, currentIndex + itemsInRow));
+              currentIndex += itemsInRow;
+              patternIndex++;
+            }
+
+            return rows.map((row, rowIndex) => (
               <div
-                key={topic.id}
-                className={`flex flex-col items-center gap-3 ${
-                  topic.locked ? "opacity-50" : "cursor-pointer"
-                } transition-all duration-300 hover:scale-105`}
-                onClick={() => !topic.locked && navigate(`/lesson/${topic.id}`)}
+                key={rowIndex}
+                className="flex justify-center items-center gap-8 flex-wrap"
               >
-                {/* Circular Skill */}
-                <div className="relative">
-                  {/* Progress Ring */}
-                  <svg className="w-32 h-32 transform -rotate-90">
-                    {/* Background circle */}
-                    <circle
-                      cx="64"
-                      cy="64"
-                      r="58"
-                      fill="none"
-                      stroke="hsl(var(--muted))"
-                      strokeWidth="8"
-                    />
-                    {/* Progress circle */}
-                    {!topic.locked && (
-                      <circle
-                        cx="64"
-                        cy="64"
-                        r="58"
-                        fill="none"
-                        stroke="hsl(var(--accent))"
-                        strokeWidth="8"
-                        strokeDasharray={`${2 * Math.PI * 58}`}
-                        strokeDashoffset={`${2 * Math.PI * 58 * (1 - progressPercentage / 100)}`}
-                        strokeLinecap="round"
-                        className="transition-all duration-500"
-                      />
-                    )}
-                  </svg>
+                {row.map((topic, index) => {
+                  const progressPercentage = (topic.lessons_completed / topic.total_lessons) * 100;
+                  const completionCount = Math.floor(topic.lessons_completed / topic.total_lessons);
+                  const isCompleted = topic.lessons_completed >= topic.total_lessons;
+                  
+                  return (
+                    <div
+                      key={topic.id}
+                      className={`flex flex-col items-center gap-3 ${
+                        topic.locked ? "opacity-50" : "cursor-pointer"
+                      } transition-all duration-300 hover:scale-105`}
+                      onClick={() => !topic.locked && navigate(`/lesson/${topic.id}`)}
+                    >
+                      {/* Circular Skill */}
+                      <div className="relative">
+                        {/* Progress Ring */}
+                        <svg className="w-32 h-32 transform -rotate-90">
+                          {/* Background circle */}
+                          <circle
+                            cx="64"
+                            cy="64"
+                            r="58"
+                            fill="none"
+                            stroke="hsl(var(--muted))"
+                            strokeWidth="8"
+                          />
+                          {/* Progress circle */}
+                          {!topic.locked && (
+                            <circle
+                              cx="64"
+                              cy="64"
+                              r="58"
+                              fill="none"
+                              stroke="hsl(var(--accent))"
+                              strokeWidth="8"
+                              strokeDasharray={`${2 * Math.PI * 58}`}
+                              strokeDashoffset={`${2 * Math.PI * 58 * (1 - progressPercentage / 100)}`}
+                              strokeLinecap="round"
+                              className="transition-all duration-500"
+                            />
+                          )}
+                        </svg>
 
-                  {/* Inner Circle with Icon */}
-                  <div
-                    className={`absolute inset-0 m-4 rounded-full flex items-center justify-center ${
-                      topic.locked
-                        ? "bg-muted"
-                        : isCompleted
-                        ? "bg-accent/20"
-                        : index === 0
-                        ? "bg-primary/10"
-                        : "bg-secondary"
-                    }`}
-                  >
-                    {topic.locked ? (
-                      <Lock className="w-10 h-10 text-muted-foreground" />
-                    ) : (
-                      <BookOpen
-                        className={`w-10 h-10 ${
-                          isCompleted ? "text-accent" : "text-primary"
-                        }`}
-                      />
-                    )}
-                  </div>
+                        {/* Inner Circle with Icon */}
+                        <div
+                          className={`absolute inset-0 m-4 rounded-full flex items-center justify-center ${
+                            topic.locked
+                              ? "bg-muted"
+                              : isCompleted
+                              ? "bg-accent/20"
+                              : index === 0
+                              ? "bg-primary/10"
+                              : "bg-secondary"
+                          }`}
+                        >
+                          {topic.locked ? (
+                            <Lock className="w-10 h-10 text-muted-foreground" />
+                          ) : (
+                            <BookOpen
+                              className={`w-10 h-10 ${
+                                isCompleted ? "text-accent" : "text-primary"
+                              }`}
+                            />
+                          )}
+                        </div>
 
-                  {/* Crown Badge */}
-                  {!topic.locked && completionCount > 0 && (
-                    <div className="absolute -bottom-1 -right-1 bg-accent rounded-full w-10 h-10 flex items-center justify-center shadow-lg border-2 border-background">
-                      <div className="flex flex-col items-center">
-                        <Crown className="w-5 h-5 text-accent-foreground" />
-                        <span className="text-xs font-bold text-accent-foreground -mt-1">
-                          {completionCount}
-                        </span>
+                        {/* Crown Badge */}
+                        {!topic.locked && completionCount > 0 && (
+                          <div className="absolute -bottom-1 -right-1 bg-accent rounded-full w-10 h-10 flex items-center justify-center shadow-lg border-2 border-background">
+                            <div className="flex flex-col items-center">
+                              <Crown className="w-5 h-5 text-accent-foreground" />
+                              <span className="text-xs font-bold text-accent-foreground -mt-1">
+                                {completionCount}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Topic Info */}
+                      <div className="text-center max-w-[200px]">
+                        <h3 className="text-base font-bold text-foreground mb-1">{topic.title}</h3>
+                        {!topic.locked && (
+                          <Badge variant="secondary" className="text-xs">
+                            {topic.lessons_completed}/{topic.total_lessons} lições
+                          </Badge>
+                        )}
+                        {topic.locked && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Complete o anterior
+                          </p>
+                        )}
                       </div>
                     </div>
-                  )}
-                </div>
-
-                {/* Topic Info */}
-                <div className="text-center max-w-[200px]">
-                  <h3 className="text-base font-bold text-foreground mb-1">{topic.title}</h3>
-                  {!topic.locked && (
-                    <Badge variant="secondary" className="text-xs">
-                      {topic.lessons_completed}/{topic.total_lessons} lições
-                    </Badge>
-                  )}
-                  {topic.locked && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Complete o anterior
-                    </p>
-                  )}
-                </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            ));
+          })()}
         </div>
       </main>
     </div>
