@@ -8,6 +8,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { updateDailyProgress } from "@/hooks/useDailyGoal";
 
+const correctSound = new Audio("/sounds/correct_answer.mp3");
+const wrongSound = new Audio("/sounds/wrong_answer.mp3");
+
 interface Question {
   id: number;
   question: string;
@@ -87,16 +90,24 @@ const Lesson = () => {
 
   const handleCheckAnswer = () => {
     if (selectedAnswer === null) return;
-
+  
     setShowFeedback(true);
     setAnsweredQuestions(prev => prev + 1);
-
+  
     if (selectedAnswer === question.correctAnswer) {
+      // toca som de acerto
+      correctSound.currentTime = 0;
+      correctSound.play().catch(() => {}); // evita erro se o navegador bloquear
+  
       setCorrectAnswers(prev => prev + 1);
       toast.success("Correto! 🎉", {
         description: "+10 XP",
       });
     } else {
+      // toca som de erro
+      wrongSound.currentTime = 0;
+      wrongSound.play().catch(() => {}); // idem acima
+  
       toast.error("Ops! Tente novamente", {
         description: "Revise a explicação abaixo",
       });
