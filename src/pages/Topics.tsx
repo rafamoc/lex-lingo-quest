@@ -182,7 +182,27 @@ const Topics = () => {
                       className={`flex flex-col items-center gap-3 ${
                         topic.locked ? "opacity-50" : "cursor-pointer"
                       } transition-all duration-300 hover:scale-105`}
-                      onClick={() => !topic.locked && navigate(`/lesson/${topic.id}`)}
+                      onClick={async () => {
+                        if (topic.locked) return;
+                        
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (!session) return;
+
+                        // Check if theory has been completed or skipped
+                        const { data: progressData } = await supabase
+                          .from("topic_progress")
+                          .select("theory_completed, theory_skipped")
+                          .eq("user_id", session.user.id)
+                          .eq("topic_id", topic.id)
+                          .maybeSingle();
+
+                        // If theory not completed and not skipped, go to theory first
+                        if (!progressData?.theory_completed && !progressData?.theory_skipped) {
+                          navigate(`/theory/${topic.id}`);
+                        } else {
+                          navigate(`/lesson/${topic.id}`);
+                        }
+                      }}
                     >
                       {/* Circular Skill */}
                       <div className="relative">

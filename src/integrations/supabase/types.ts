@@ -138,11 +138,43 @@ export type Database = {
         }
         Relationships: []
       }
+      theory_sections: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          image_url: string | null
+          order_index: number
+          title: string
+          topic_id: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          order_index: number
+          title: string
+          topic_id: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          order_index?: number
+          title?: string
+          topic_id?: number
+        }
+        Relationships: []
+      }
       topic_progress: {
         Row: {
           created_at: string
           id: string
           lessons_completed: number
+          theory_completed: boolean
+          theory_skipped: boolean
           topic_id: number
           updated_at: string
           user_id: string
@@ -151,6 +183,8 @@ export type Database = {
           created_at?: string
           id?: string
           lessons_completed?: number
+          theory_completed?: boolean
+          theory_skipped?: boolean
           topic_id: number
           updated_at?: string
           user_id: string
@@ -159,6 +193,8 @@ export type Database = {
           created_at?: string
           id?: string
           lessons_completed?: number
+          theory_completed?: boolean
+          theory_skipped?: boolean
           topic_id?: number
           updated_at?: string
           user_id?: string

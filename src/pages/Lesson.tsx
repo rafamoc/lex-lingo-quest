@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -64,10 +64,22 @@ const questions: Question[] = [
 const Lesson = () => {
   const navigate = useNavigate();
   const { topicId } = useParams();
+  const location = useLocation();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+
+  // Resume progress if returning from theory
+  useEffect(() => {
+    if (location.state?.resumeProgress) {
+      const { currentQuestion: saved, selectedAnswer: savedAnswer, correctAnswers: savedCorrect, showFeedback: savedFeedback } = location.state.resumeProgress;
+      setCurrentQuestion(saved);
+      setSelectedAnswer(savedAnswer);
+      setCorrectAnswers(savedCorrect);
+      setShowFeedback(savedFeedback);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -219,6 +231,23 @@ const Lesson = () => {
             <span className="text-sm font-medium text-muted-foreground">
               {currentQuestion + 1}/{questions.length}
             </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/theory/${topicId}`, { 
+                state: { 
+                  returnToLesson: true,
+                  lessonProgress: {
+                    currentQuestion,
+                    selectedAnswer,
+                    correctAnswers,
+                    showFeedback,
+                  }
+                }
+              })}
+            >
+              📘 Revisar teoria
+            </Button>
           </div>
         </div>
       </header>

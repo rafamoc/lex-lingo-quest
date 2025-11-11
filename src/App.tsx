@@ -9,6 +9,7 @@ import { PageTransition } from "@/components/PageTransition";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Topics from "./pages/Topics";
+import TheoryLesson from "./pages/TheoryLesson";
 import Lesson from "./pages/Lesson";
 import LessonComplete from "./pages/LessonComplete";
 import Auth from "./pages/Auth";
@@ -28,6 +29,7 @@ const AnimatedRoutes = () => {
         <Route path="/auth" element={<PageTransition><Auth /></PageTransition>} />
         <Route path="/dashboard" element={<PageTransition><Dashboard /></PageTransition>} />
         <Route path="/topics/:trackId" element={<PageTransition><Topics /></PageTransition>} />
+        <Route path="/theory/:topicId" element={<PageTransition><TheoryLesson /></PageTransition>} />
         <Route path="/lesson/:topicId" element={<PageTransition><Lesson /></PageTransition>} />
         <Route path="/lesson-complete" element={<PageTransition><LessonComplete /></PageTransition>} />
         <Route path="/streak" element={<PageTransition><StreakStats /></PageTransition>} />
