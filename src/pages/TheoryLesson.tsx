@@ -36,6 +36,7 @@ const TheoryLesson = () => {
   const returnToLesson = location.state?.returnToLesson;
   const isAutoScrolling = useRef(false);
 
+  // 🔒 Carrega teoria e autenticação
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -84,7 +85,7 @@ const TheoryLesson = () => {
     return () => subscription.unsubscribe();
   }, [navigate, topicId]);
 
-  // Scroll + teclado
+  // 🔄 Scroll + teclado
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -167,8 +168,13 @@ const TheoryLesson = () => {
 
     currentAudio.onended = () => setIsAudioPlaying(false);
 
+    // 🧹 Cleanup: pausa e reseta ao desmontar ou trocar de lição
     return () => {
-      currentAudio.onended = null;
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        setIsAudioPlaying(false);
+      }
     };
   }, [currentSection, isAudioEnabled, sections]);
 
@@ -188,7 +194,18 @@ const TheoryLesson = () => {
     }
   };
 
+  // 🧹 Pausa áudio ao sair ou concluir
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsAudioPlaying(false);
+    }
+  };
+
   const handleSkipTheory = async () => {
+    stopAudio();
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
@@ -228,6 +245,8 @@ const TheoryLesson = () => {
   };
 
   const handleComplete = async () => {
+    stopAudio();
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
@@ -273,6 +292,11 @@ const TheoryLesson = () => {
     }
   };
 
+  // 🧹 Pausa áudio ao desmontar (voltar no navegador, sair da tela)
+  useEffect(() => {
+    return () => stopAudio();
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -315,6 +339,7 @@ const TheoryLesson = () => {
                     const progress = location.state?.lessonProgress;
                     if (progress)
                       localStorage.setItem(`lessonProgress_${topicId}`, JSON.stringify(progress));
+                    stopAudio();
                     navigate(`/lesson/${topicId}`, { state: { resumeProgress: progress } });
                   }}
                 >
@@ -370,15 +395,13 @@ const TheoryLesson = () => {
         ))}
       </div>
 
-      
-      {/* Avatar + áudio (estrutura final separada) */}
+      {/* Avatar + áudio */}
       <div
         className="
           fixed bottom-4 left-4 z-20 flex flex-col items-center
           md:absolute md:bottom-6 md:left-[calc(50%-35rem)]
         "
       >
-        {/* 🔊 Botão de volume fixo e centralizado acima do avatar */}
         <div className="mb-2">
           <button
             onClick={toggleAudio}
@@ -401,9 +424,7 @@ const TheoryLesson = () => {
           </button>
         </div>
 
-        {/* 🧠 Avatar + GIF de áudio (independentes entre si) */}
         <div className="relative flex items-center justify-center">
-          {/* Avatar */}
           <div
             className="
               w-40 h-40 md:w-44 md:h-44
@@ -419,23 +440,15 @@ const TheoryLesson = () => {
             />
           </div>
 
-          {/* 🎵 GIF de áudio flutuante (não afeta layout) */}
           {isAudioPlaying && (
             <img
               src="/images/audio_playing.gif"
               alt="Áudio tocando"
-              className="
-                absolute -right-12 bottom-6
-                w-10 h-10 animate-pulse
-              "
+              className="absolute -right-12 bottom-6 w-10 h-10 animate-pulse"
             />
           )}
         </div>
       </div>
-
-
-
-
     </div>
   );
 };

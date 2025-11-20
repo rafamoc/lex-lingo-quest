@@ -61,7 +61,6 @@ const genericQuestions: Question[] = [
   },
 ];
 
-// Questões EXCLUSIVAS da skill Compensação (topic_id = 23)
 const compensacaoQuestions: Question[] = [
   {
     id: 101,
@@ -102,7 +101,133 @@ const compensacaoQuestions: Question[] = [
     explanation:
       "Se A e B são reciprocamente credores e devedores em valores equivalentes, ocorre compensação e ambas as dívidas se extinguem.",
   },
+
+  // ---------------------------
+  // NOVAS QUESTÕES (9)
+  // ---------------------------
+
+  {
+    id: 104,
+    question: "A compensação legal só ocorre quando as dívidas forem:",
+    options: [
+      "Prescritas, incertas e futuras",
+      "Vencidas, líquidas e de coisas fungíveis",
+      "Condicionais e ilíquidas",
+      "De bens infungíveis",
+    ],
+    correctAnswer: 1,
+    explanation:
+      "A compensação legal exige dívidas vencidas, líquidas e de coisas fungíveis (art. 368 do CC).",
+  },
+  {
+    id: 105,
+    question:
+      "Complete: a compensação pode ser aplicada a dívidas _______, líquidas e de bens _________.",
+    options: [
+      "vencidas — fungíveis",
+      "líquidas — infungíveis",
+      "prescritas — móveis",
+      "condicionais — imóveis",
+    ],
+    correctAnswer: 0,
+    explanation:
+      "A compensação legal exige créditos vencidos, líquidos e de coisas fungíveis.",
+  },
+  {
+    id: 106,
+    question: "Qual tipo de compensação depende da vontade das partes?",
+    options: [
+      "Compensação legal",
+      "Compensação convencional",
+      "Compensação judicial",
+      "Compensação extrajudicial",
+    ],
+    correctAnswer: 1,
+    explanation:
+      "A compensação convencional decorre de acordo entre as partes, mesmo quando não estão presentes todos os requisitos da compensação legal.",
+  },
+  {
+    id: 107,
+    question: "A compensação NÃO poderá ocorrer quando:",
+    options: [
+      "As dívidas forem de alimentos",
+      "As dívidas forem vencidas e líquidas",
+      "Ambas as dívidas forem de dinheiro",
+      "As partes forem reciprocamente credoras",
+    ],
+    correctAnswer: 0,
+    explanation:
+      "O art. 373 do CC veda a compensação em obrigações de alimentos e outras de natureza especial.",
+  },
+  {
+    id: 108,
+    question: "Quando a compensação é declarada pelo juiz durante um processo, chama-se:",
+    options: [
+      "Compensação legal",
+      "Compensação convencional",
+      "Compensação judicial",
+      "Compensação extrajudicial",
+    ],
+    correctAnswer: 2,
+    explanation:
+      "Na compensação judicial, a extinção das dívidas ocorre por decisão judicial ao reconhecer créditos recíprocos durante um processo.",
+  },
+  {
+    id: 109,
+    question:
+      "Se A deve R$ 1.000 para B, e B deve R$ 700 para A, qual será o resultado após a compensação?",
+    options: [
+      "Ambas as dívidas se extinguem totalmente",
+      "A ainda deverá R$ 300 para B",
+      "B deverá R$ 300 para A",
+      "Nenhuma compensação é possível",
+    ],
+    correctAnswer: 1,
+    explanation:
+      "A compensação extingue as dívidas até o limite da menor. Assim, extinguem-se R$ 700 e sobra um saldo de R$ 300 que A deve pagar a B.",
+  },
+  {
+    id: 110,
+    question: "A compensação pode ocorrer automaticamente, sem manifestação das partes?",
+    options: [
+      "Sim, na compensação legal",
+      "Sim, sempre que houver dívidas recíprocas",
+      "Não, nunca",
+      "Somente com autorização judicial",
+    ],
+    correctAnswer: 0,
+    explanation:
+      "A compensação legal opera automaticamente, desde que presentes os requisitos do art. 368 do CC.",
+  },
+  {
+    id: 111,
+    question:
+      "Qual das situações abaixo NÃO permite compensação, segundo o Código Civil?",
+    options: [
+      "Dívidas de jogo lícito",
+      "Dívidas vencidas e líquidas",
+      "Dívidas de alimentos",
+      "Dívidas de dinheiro",
+    ],
+    correctAnswer: 2,
+    explanation:
+      "Dívidas de alimentos não podem ser compensadas (art. 373).",
+  },
+  {
+    id: 112,
+    question: "A compensação pode ser parcial?",
+    options: [
+      "Não, sempre extingue toda a dívida",
+      "Sim, quando os valores das dívidas forem diferentes",
+      "Sim, mas somente na compensação judicial",
+      "Não, somente total",
+    ],
+    correctAnswer: 1,
+    explanation:
+      "Se os valores forem diferentes, a compensação extingue apenas até o limite da menor obrigação, restando saldo devedor (art. 369).",
+  },
 ];
+
 
 /* ===============================
    SELECT QUESTION SET BY TOPIC
