@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, BookOpen, ChevronDown } from "lucide-react";
+import { ArrowLeft, BookOpen, ChevronDown, Volume2, VolumeX } from "lucide-react";
 import { updateDailyProgress } from "@/hooks/useDailyGoal";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -17,6 +17,7 @@ interface TheorySection {
   content: string;
   image_url: string | null;
   avatar_id?: number | null;
+  audio_id?: number | null;
 }
 
 const TheoryLesson = () => {
@@ -27,9 +28,13 @@ const TheoryLesson = () => {
   const [currentSection, setCurrentSection] = useState(0);
   const [loading, setLoading] = useState(true);
   const [topicTitle, setTopicTitle] = useState("");
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const returnToLesson = location.state?.returnToLesson;
-  const isAutoScrolling = useRef(false); // 🧭 flag para evitar “tremida”
+  const isAutoScrolling = useRef(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -79,7 +84,7 @@ const TheoryLesson = () => {
     return () => subscription.unsubscribe();
   }, [navigate, topicId]);
 
-  // ✅ Listener de scroll e teclado
+  // Scroll + teclado
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -87,8 +92,7 @@ const TheoryLesson = () => {
     const sectionHeight = window.innerHeight;
 
     const handleScroll = () => {
-      if (isAutoScrolling.current) return; // evita conflito durante scroll automático
-
+      if (isAutoScrolling.current) return;
       window.requestAnimationFrame(() => {
         const newSection = Math.round(container.scrollTop / sectionHeight);
         if (newSection !== currentSection) setCurrentSection(newSection);
@@ -114,23 +118,74 @@ const TheoryLesson = () => {
     };
   }, [currentSection, sections.length]);
 
-  // ✅ Scroll com bloqueio temporário de re-renderização
   const scrollToSection = (index: number) => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    isAutoScrolling.current = true; // evita duplo update
-
+    isAutoScrolling.current = true;
     container.scrollTo({
       top: index * window.innerHeight,
       behavior: "smooth",
     });
-
-    // Atualiza currentSection apenas quando a animação terminar (~400ms)
     setTimeout(() => {
       setCurrentSection(index);
-      isAutoScrolling.current = false; // libera novamente
+      isAutoScrolling.current = false;
     }, 400);
+  };
+
+  // 🎧 Controle de áudio
+  useEffect(() => {
+    if (sections.length === 0) return;
+
+    const currentAudioId = sections[currentSection]?.audio_id || 1;
+    const audioFile = `/audios/audio_${currentAudioId}.mp3`;
+
+    if (!audioRef.current) {
+      audioRef.current = new Audio(audioFile);
+    }
+
+    if (audioRef.current.src !== window.location.origin + audioFile) {
+      audioRef.current.pause();
+      audioRef.current.src = audioFile;
+    }
+
+    const currentAudio = audioRef.current;
+
+    const playAudio = () => {
+      setTimeout(() => {
+        if (isAudioEnabled) {
+          currentAudio.play().then(() => {
+            setIsAudioPlaying(true);
+          }).catch(() => {
+            console.warn("Autoplay bloqueado.");
+          });
+        }
+      }, 1000);
+    };
+
+    playAudio();
+
+    currentAudio.onended = () => setIsAudioPlaying(false);
+
+    return () => {
+      currentAudio.onended = null;
+    };
+  }, [currentSection, isAudioEnabled, sections]);
+
+  const toggleAudio = () => {
+    if (!audioRef.current) return;
+    const audio = audioRef.current;
+
+    if (isAudioPlaying) {
+      audio.pause();
+      setIsAudioPlaying(false);
+      setIsAudioEnabled(false);
+    } else {
+      audio.play().then(() => {
+        setIsAudioPlaying(true);
+        setIsAudioEnabled(true);
+      });
+    }
   };
 
   const handleSkipTheory = async () => {
@@ -156,7 +211,6 @@ const TheoryLesson = () => {
       if (profile) {
         const newXP = profile.xp + 30;
         const newLevel = Math.floor(newXP / 100) + 1;
-
         await supabase.from("profiles").update({ xp: newXP, level: newLevel }).eq("id", session.user.id);
         await updateDailyProgress(30);
       }
@@ -196,7 +250,6 @@ const TheoryLesson = () => {
       if (profile) {
         const newXP = profile.xp + 30;
         const newLevel = Math.floor(newXP / 100) + 1;
-
         await supabase.from("profiles").update({ xp: newXP, level: newLevel }).eq("id", session.user.id);
         await updateDailyProgress(30);
       }
@@ -317,28 +370,72 @@ const TheoryLesson = () => {
         ))}
       </div>
 
-      {/* Avatar do locutor */}
+      
+      {/* Avatar + áudio (estrutura final separada) */}
       <div
         className="
-          fixed bottom-4 left-4 z-20
+          fixed bottom-4 left-4 z-20 flex flex-col items-center
           md:absolute md:bottom-6 md:left-[calc(50%-35rem)]
         "
       >
-        <div
-          className="
-            w-40 h-40 md:w-44 md:h-44
-            rounded-full bg-white shadow-lg border-2 border-primary
-            overflow-hidden flex items-center justify-center
-          "
-        >
-          <img
-            key={`${currentSection}-${sections[currentSection]?.avatar_id}`}
-            src={avatarSrc}
-            alt={`Locutor da seção ${currentSection + 1}`}
-            className="object-cover w-full h-full transition-opacity duration-300 ease-in-out"
-          />
+        {/* 🔊 Botão de volume fixo e centralizado acima do avatar */}
+        <div className="mb-2">
+          <button
+            onClick={toggleAudio}
+            className="
+              relative bg-white border border-border shadow-md rounded-full
+              w-10 h-10 flex items-center justify-center
+              hover:bg-accent transition
+            "
+          >
+            <Volume2
+              className={`absolute w-5 h-5 text-primary transition-opacity duration-200 ${
+                isAudioEnabled ? "opacity-100" : "opacity-0"
+              }`}
+            />
+            <VolumeX
+              className={`absolute w-5 h-5 text-muted-foreground transition-opacity duration-200 ${
+                isAudioEnabled ? "opacity-0" : "opacity-100"
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* 🧠 Avatar + GIF de áudio (independentes entre si) */}
+        <div className="relative flex items-center justify-center">
+          {/* Avatar */}
+          <div
+            className="
+              w-40 h-40 md:w-44 md:h-44
+              rounded-full bg-white shadow-lg border-2 border-primary
+              overflow-hidden flex items-center justify-center
+            "
+          >
+            <img
+              key={`${currentSection}-${sections[currentSection]?.avatar_id}`}
+              src={avatarSrc}
+              alt={`Locutor da seção ${currentSection + 1}`}
+              className="object-cover w-full h-full transition-opacity duration-300 ease-in-out"
+            />
+          </div>
+
+          {/* 🎵 GIF de áudio flutuante (não afeta layout) */}
+          {isAudioPlaying && (
+            <img
+              src="/images/audio_playing.gif"
+              alt="Áudio tocando"
+              className="
+                absolute -right-12 bottom-6
+                w-10 h-10 animate-pulse
+              "
+            />
+          )}
         </div>
       </div>
+
+
+
+
     </div>
   );
 };
