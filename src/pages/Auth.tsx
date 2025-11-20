@@ -22,17 +22,13 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Verifica se o usuário já está logado
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/dashboard");
-      }
+      if (session) navigate("/dashboard");
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate("/dashboard");
-      }
+      if (session) navigate("/dashboard");
     });
 
     return () => subscription.unsubscribe();
@@ -43,15 +39,11 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // Validate input
       authSchema.parse({ email, password });
 
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
+        // ---- LOGIN ----
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
           if (error.message.includes("Invalid login credentials")) {
             toast.error("Email ou senha incorretos");
@@ -60,9 +52,9 @@ const Auth = () => {
           }
           return;
         }
-
         toast.success("Login realizado com sucesso!");
       } else {
+        // ---- CADASTRO ----
         const redirectUrl = `${window.location.origin}/dashboard`;
         const { error } = await supabase.auth.signUp({
           email,
@@ -82,6 +74,56 @@ const Auth = () => {
         }
 
         toast.success("Conta criada com sucesso!");
+
+        // Aguarda sessão e configura progresso inicial
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const userId = session.user.id;
+
+          try {
+            // 1️⃣ Marca as trilhas 1–5 como concluídas
+            const completedTopicIds = [
+              // Trilha 1
+              1, 2, 3, 4, 5,
+              // Trilha 2
+              6, 7,
+              // Trilha 3
+              8, 9, 10,
+              // Trilha 4
+              11, 12, 13, 14, 15,
+              // Trilha 5
+              16, 17
+            ];
+
+            for (const topicId of completedTopicIds) {
+              await supabase
+                .from("topic_progress")
+                .upsert({
+                  user_id: userId,
+                  topic_id: topicId,
+                  lessons_completed: 10, // marca todas as lições como concluídas
+                  theory_completed: true,
+                  theory_skipped: true,
+                }, { onConflict: "user_id,topic_id" });
+            }
+
+            // 2️⃣ Cria progresso desbloqueado na trilha 6 (Compensação)
+            await supabase
+              .from("topic_progress")
+              .upsert({
+                user_id: userId,
+                topic_id: 23, // Compensação
+                lessons_completed: 0,
+                theory_completed: false,
+                theory_skipped: false,
+              }, { onConflict: "user_id,topic_id" });
+
+            toast.success("Progresso inicial configurado!");
+          } catch (err) {
+            console.error("Erro ao configurar progresso inicial:", err);
+            toast.error("Erro ao preparar progresso inicial.");
+          }
+        }
       }
     } catch (error) {
       if (error instanceof z.ZodError) {

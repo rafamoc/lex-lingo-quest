@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, BookOpen, ChevronDown } from "lucide-react";
 import { updateDailyProgress } from "@/hooks/useDailyGoal";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 
 interface TheorySection {
   id: string;
@@ -15,6 +16,7 @@ interface TheorySection {
   title: string;
   content: string;
   image_url: string | null;
+  avatar_id?: number | null; // ✅ agora opcional
 }
 
 const TheoryLesson = () => {
@@ -61,7 +63,14 @@ const TheoryLesson = () => {
         setTopicTitle(topicData.title);
       }
 
-      setSections(sectionsData || []);
+      // ✅ Corrigido: define avatar padrão de forma segura
+      setSections(
+        (sectionsData || []).map((section: any) => ({
+          ...section,
+          avatar_id: section.avatar_id ?? 1,
+        }))
+      );
+
       setLoading(false);
     };
 
@@ -129,14 +138,15 @@ const TheoryLesson = () => {
     // Mark theory as skipped
     await supabase
       .from("topic_progress")
-      .upsert({
-        user_id: session.user.id,
-        topic_id: parseInt(topicId!),
-        theory_skipped: true,
-        lessons_completed: 0,
-      }, {
-        onConflict: "user_id,topic_id",
-      });
+      .upsert(
+        {
+          user_id: session.user.id,
+          topic_id: parseInt(topicId!),
+          theory_skipped: true,
+          lessons_completed: 0,
+        },
+        { onConflict: "user_id,topic_id" }
+      );
 
     toast.success(alreadyProcessed ? "Indo para lições práticas" : "+30 XP ganhos!");
     navigate(`/lesson/${topicId}`);
@@ -180,25 +190,23 @@ const TheoryLesson = () => {
     // Mark theory as completed
     await supabase
       .from("topic_progress")
-      .upsert({
-        user_id: session.user.id,
-        topic_id: parseInt(topicId!),
-        theory_completed: true,
-        lessons_completed: 0,
-      }, {
-        onConflict: "user_id,topic_id",
-      });
+      .upsert(
+        {
+          user_id: session.user.id,
+          topic_id: parseInt(topicId!),
+          theory_completed: true,
+          lessons_completed: 0,
+        },
+        { onConflict: "user_id,topic_id" }
+      );
 
     if (returnToLesson) {
       toast.success("Voltando para a lição");
       const progress = location.state?.lessonProgress;
       if (progress) {
-        // Save to localStorage as backup
         localStorage.setItem(`lessonProgress_${topicId}`, JSON.stringify(progress));
       }
-      navigate(`/lesson/${topicId}`, { 
-        state: { resumeProgress: progress } 
-      });
+      navigate(`/lesson/${topicId}`, { state: { resumeProgress: progress } });
     } else {
       toast.success(alreadyCompleted ? "Indo para lições práticas" : "+30 XP ganhos!");
       navigate(`/lesson/${topicId}`);
@@ -208,7 +216,7 @@ const TheoryLesson = () => {
   const scrollToSection = (index: number) => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    
+
     container.scrollTo({
       top: index * window.innerHeight,
       behavior: "smooth",
@@ -228,15 +236,15 @@ const TheoryLesson = () => {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="p-6 max-w-md">
           <p className="text-foreground mb-4">Nenhum conteúdo teórico disponível para esta skill.</p>
-          <Button onClick={() => navigate(`/lesson/${topicId}`)}>
-            Ir para lições práticas
-          </Button>
+          <Button onClick={() => navigate(`/lesson/${topicId}`)}>Ir para lições práticas</Button>
         </Card>
       </div>
     );
   }
 
   const progress = ((currentSection + 1) / sections.length) * 100;
+  const currentSectionAvatarId = sections[currentSection]?.avatar_id || 1;
+  const avatarSrc = `/mascot/person_${currentSectionAvatarId}.png`;
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -256,23 +264,16 @@ const TheoryLesson = () => {
                   onClick={() => {
                     const progress = location.state?.lessonProgress;
                     if (progress) {
-                      // Save to localStorage as backup
                       localStorage.setItem(`lessonProgress_${topicId}`, JSON.stringify(progress));
                     }
-                    navigate(`/lesson/${topicId}`, { 
-                      state: { resumeProgress: progress } 
-                    });
+                    navigate(`/lesson/${topicId}`, { state: { resumeProgress: progress } });
                   }}
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Voltar para prática
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSkipTheory}
-              >
+              <Button variant="ghost" size="sm" onClick={handleSkipTheory}>
                 Pular teoria
               </Button>
             </div>
@@ -286,48 +287,31 @@ const TheoryLesson = () => {
         </div>
       </div>
 
-      {/* Scroll container with snap */}
+      {/* Scroll container */}
       <div
         ref={scrollContainerRef}
         className="h-screen overflow-y-scroll snap-y snap-mandatory pt-20"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {sections.map((section, index) => (
-          <div
-            key={section.id}
-            className="h-screen snap-start flex items-center justify-center p-4"
-          >
+          <div key={section.id} className="h-screen snap-start flex items-center justify-center p-4">
             <Card className="max-w-3xl w-full p-8 space-y-6">
               <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-foreground">
-                  {section.title}
-                </h2>
+                <h2 className="text-2xl font-bold text-foreground">{section.title}</h2>
                 {section.image_url && (
-                  <img
-                    src={section.image_url}
-                    alt={section.title}
-                    className="w-full rounded-lg"
-                  />
+                  <img src={section.image_url} alt={section.title} className="w-full rounded-lg" />
                 )}
-                <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">
-                  {section.content}
-                </p>
+                <div className="prose prose-sm sm:prose-base max-w-none text-foreground/80 leading-relaxed">
+                  <ReactMarkdown>{section.content}</ReactMarkdown>
+                </div>
               </div>
 
               {index === sections.length - 1 ? (
-                <Button
-                  onClick={handleComplete}
-                  className="w-full"
-                  size="lg"
-                >
+                <Button onClick={handleComplete} className="w-full" size="lg">
                   {returnToLesson ? "Voltar para prática" : "Concluir teoria e ir para prática"}
                 </Button>
               ) : (
-                <Button
-                  variant="ghost"
-                  onClick={() => scrollToSection(index + 1)}
-                  className="w-full"
-                >
+                <Button variant="ghost" onClick={() => scrollToSection(index + 1)} className="w-full">
                   Continuar
                   <ChevronDown className="w-4 h-4 ml-2" />
                 </Button>
@@ -335,6 +319,24 @@ const TheoryLesson = () => {
             </Card>
           </div>
         ))}
+      </div>
+
+      {/* Avatar do locutor dinâmico */}
+      <div
+        className="
+          fixed bottom-4 left-4 z-20
+          md:absolute md:bottom-6 md:left-[calc(50%-35rem)]
+        "
+      >
+        <div
+          className="
+            w-40 h-40 md:w-44 md:h-44
+            rounded-full bg-white shadow-lg border-2 border-primary
+            overflow-hidden flex items-center justify-center
+          "
+        >
+          <img src={avatarSrc} alt="Locutor LexLingo" className="object-cover w-full h-full" />
+        </div>
       </div>
     </div>
   );

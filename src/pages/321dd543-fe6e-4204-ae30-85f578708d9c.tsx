@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -15,23 +14,16 @@ interface Profile {
   xp: number;
   level: number;
   streak: number;
-  last_active: string | null;
   created_at: string;
   updated_at: string;
 }
 
 const AdminPanel = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
-  
-  const [editData, setEditData] = useState({
-    xp: 0,
-    level: 1,
-    streak: 0,
-  });
 
   useEffect(() => {
     loadProfiles();
@@ -45,7 +37,6 @@ const AdminPanel = () => {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error loading profiles:", error);
       toast.error("Erro ao carregar usuários");
     } else {
       setProfiles(data || []);
@@ -53,42 +44,18 @@ const AdminPanel = () => {
     setLoading(false);
   };
 
-  const handleUserSelect = (userId: string) => {
-    setSelectedUserId(userId);
-    const user = profiles.find(p => p.id === userId);
-    if (user) {
-      setEditData({
-        xp: user.xp,
-        level: user.level,
-        streak: user.streak,
-      });
-    }
-  };
-
   const handleSave = async () => {
     if (!selectedUserId) {
       toast.error("Selecione um usuário");
       return;
     }
-
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
-      .update({
-        xp: editData.xp,
-        level: editData.level,
-        streak: editData.streak,
-        updated_at: new Date().toISOString(),
-      })
+      .update({ updated_at: new Date().toISOString() })
       .eq("id", selectedUserId);
-
-    if (error) {
-      console.error("Error updating profile:", error);
-      toast.error("Erro ao salvar alterações");
-    } else {
-      toast.success("Alterações salvas com sucesso!");
-      await loadProfiles();
-    }
+    if (error) toast.error("Erro ao salvar alterações");
+    else toast.success("Alterações salvas!");
     setSaving(false);
   };
 
@@ -98,68 +65,82 @@ const AdminPanel = () => {
       return;
     }
 
-    if (!confirm("Tem certeza que deseja resetar completamente este usuário? Esta ação não pode ser desfeita.")) {
+    if (
+      !confirm(
+        "Tem certeza que deseja resetar este usuário para o estado de avanço até 'Compensação'?"
+      )
+    )
       return;
-    }
 
     setResetting(true);
-
     try {
-      // Reset profile
+      // 1️⃣ Limpa progresso anterior
+      await Promise.all([
+        supabase.from("topic_progress").delete().eq("user_id", selectedUserId),
+        supabase.from("daily_progress").delete().eq("user_id", selectedUserId),
+        supabase.from("module_progress").delete().eq("user_id", selectedUserId),
+      ]);
+
+      // 2️⃣ Atualiza o perfil com XP/nível simulando o progresso real
+      const totalXP = 5100;
+      const newLevel = 18; // ajustável
+      const streakDays = 7;
+
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
-          xp: 0,
-          level: 1,
-          streak: 0,
+          xp: totalXP,
+          level: newLevel,
+          streak: streakDays,
           updated_at: new Date().toISOString(),
         })
         .eq("id", selectedUserId);
-
       if (profileError) throw profileError;
 
-      // Delete topic progress
-      const { error: topicError } = await supabase
-        .from("topic_progress")
-        .delete()
-        .eq("user_id", selectedUserId);
+      // 3️⃣ Marca todas as skills de 1–22 como concluídas
+      const completedTopicIds = Array.from({ length: 22 }, (_, i) => i + 1);
+      for (const topicId of completedTopicIds) {
+        const { error } = await supabase.from("topic_progress").upsert(
+          {
+            user_id: selectedUserId,
+            topic_id: topicId,
+            lessons_completed: 10,
+            theory_completed: true,
+            theory_skipped: true,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,topic_id" }
+        );
+        if (error) throw error;
+      }
 
-      if (topicError) throw topicError;
+      // 4️⃣ Cria o progresso da skill “Compensação” (id 23)
+      const { error: compError } = await supabase.from("topic_progress").upsert(
+        {
+          user_id: selectedUserId,
+          topic_id: 23,
+          lessons_completed: 0,
+          theory_completed: false,
+          theory_skipped: false,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,topic_id" }
+      );
+      if (compError) throw compError;
 
-      // Delete daily progress
-      const { error: dailyError } = await supabase
-        .from("daily_progress")
-        .delete()
-        .eq("user_id", selectedUserId);
-
-      if (dailyError) throw dailyError;
-
-      // Delete module progress
-      const { error: moduleError } = await supabase
-        .from("module_progress")
-        .delete()
-        .eq("user_id", selectedUserId);
-
-      if (moduleError) throw moduleError;
-
-      toast.success("Usuário resetado com sucesso!");
-      
-      // Reload data
+      // 5️⃣ Aguarda sincronização e finaliza
+      await new Promise((r) => setTimeout(r, 1200));
+      toast.success("Usuário resetado para o estado pré-Compensação!");
       await loadProfiles();
-      setEditData({
-        xp: 0,
-        level: 1,
-        streak: 0,
-      });
-    } catch (error) {
-      console.error("Error resetting user:", error);
+    } catch (err) {
+      console.error("Erro ao resetar usuário:", err);
       toast.error("Erro ao resetar usuário");
+    } finally {
+      setResetting(false);
     }
-
-    setResetting(false);
   };
 
-  const selectedUser = profiles.find(p => p.id === selectedUserId);
+  const selectedUser = profiles.find((p) => p.id === selectedUserId);
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -177,17 +158,20 @@ const AdminPanel = () => {
               </div>
             ) : (
               <>
-                {/* User Selection */}
                 <div className="space-y-2">
                   <Label htmlFor="user-select">Selecionar Usuário</Label>
-                  <Select value={selectedUserId} onValueChange={handleUserSelect}>
+                  <Select
+                    value={selectedUserId}
+                    onValueChange={setSelectedUserId}
+                  >
                     <SelectTrigger id="user-select" className="w-full">
                       <SelectValue placeholder="Escolha um usuário..." />
                     </SelectTrigger>
                     <SelectContent className="bg-card border-border z-50 max-h-[300px]">
                       {profiles.map((profile) => (
                         <SelectItem key={profile.id} value={profile.id}>
-                          {profile.name || 'Usuário'} {profile.email ? `<${profile.email}>` : ''} (Nível {profile.level} – {profile.xp} XP)
+                          {profile.email || "Usuário"} (Lvl {profile.level} –{" "}
+                          {profile.xp} XP)
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -196,74 +180,33 @@ const AdminPanel = () => {
 
                 {selectedUser && (
                   <>
-                    {/* User Identity Card */}
                     <Card className="bg-primary/5 border-primary/20">
                       <CardContent className="pt-6 space-y-3">
-                        <div className="space-y-1">
-                          <h3 className="text-xl font-bold text-foreground">
-                            {selectedUser.name || 'Usuário sem nome'}
-                          </h3>
-                          {selectedUser.email && (
-                            <p className="text-muted-foreground">{selectedUser.email}</p>
-                          )}
-                        </div>
-                        
+                        <h3 className="text-xl font-bold text-foreground">
+                          {selectedUser.name || "Usuário sem nome"}
+                        </h3>
+                        <p className="text-muted-foreground">
+                          {selectedUser.email}
+                        </p>
                         <div className="grid grid-cols-2 gap-4 pt-2">
                           <div>
-                            <p className="text-xs text-muted-foreground">Nível</p>
-                            <p className="text-lg font-semibold text-foreground">{selectedUser.level}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Nível
+                            </p>
+                            <p className="text-lg font-semibold text-foreground">
+                              {selectedUser.level}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground">XP Total</p>
-                            <p className="text-lg font-semibold text-foreground">{selectedUser.xp}</p>
+                            <p className="text-xs text-muted-foreground">XP</p>
+                            <p className="text-lg font-semibold text-foreground">
+                              {selectedUser.xp}
+                            </p>
                           </div>
-                        </div>
-
-                        <div className="pt-2 space-y-1 text-xs text-muted-foreground border-t border-border/50">
-                          <p><strong>ID:</strong> {selectedUser.id}</p>
-                          <p><strong>Criado em:</strong> {new Date(selectedUser.created_at).toLocaleString('pt-BR')}</p>
-                          <p><strong>Última atividade:</strong> {selectedUser.last_active ? new Date(selectedUser.last_active).toLocaleString('pt-BR') : 'Nunca'}</p>
                         </div>
                       </CardContent>
                     </Card>
 
-                    {/* Edit Form */}
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="xp">XP</Label>
-                        <Input
-                          id="xp"
-                          type="number"
-                          value={editData.xp}
-                          onChange={(e) => setEditData({ ...editData, xp: parseInt(e.target.value) || 0 })}
-                          className="w-full"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="level">Nível</Label>
-                        <Input
-                          id="level"
-                          type="number"
-                          value={editData.level}
-                          onChange={(e) => setEditData({ ...editData, level: parseInt(e.target.value) || 1 })}
-                          className="w-full"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="streak">Streak</Label>
-                        <Input
-                          id="streak"
-                          type="number"
-                          value={editData.streak}
-                          onChange={(e) => setEditData({ ...editData, streak: parseInt(e.target.value) || 0 })}
-                          className="w-full"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
                     <div className="flex gap-3 pt-4">
                       <Button
                         onClick={handleSave}
@@ -278,7 +221,7 @@ const AdminPanel = () => {
                         ) : (
                           <>
                             <Save className="w-4 h-4 mr-2" />
-                            Salvar Alterações
+                            Salvar
                           </>
                         )}
                       </Button>
