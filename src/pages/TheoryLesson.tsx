@@ -16,7 +16,7 @@ interface TheorySection {
   title: string;
   content: string;
   image_url: string | null;
-  avatar_id?: number | null; // ✅ agora opcional
+  avatar_id?: number | null;
 }
 
 const TheoryLesson = () => {
@@ -29,6 +29,7 @@ const TheoryLesson = () => {
   const [topicTitle, setTopicTitle] = useState("");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const returnToLesson = location.state?.returnToLesson;
+  const isAutoScrolling = useRef(false); // 🧭 flag para evitar “tremida”
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -38,7 +39,6 @@ const TheoryLesson = () => {
         return;
       }
 
-      // Fetch theory sections
       const { data: sectionsData, error: sectionsError } = await supabase
         .from("theory_sections")
         .select("*")
@@ -46,24 +46,20 @@ const TheoryLesson = () => {
         .order("order_index");
 
       if (sectionsError) {
-        console.error("Error fetching theory sections:", sectionsError);
+        console.error("Erro ao buscar seções:", sectionsError);
         toast.error("Erro ao carregar conteúdo teórico");
         navigate(-1);
         return;
       }
 
-      // Fetch topic title
       const { data: topicData } = await supabase
         .from("topics")
         .select("title, track_id")
         .eq("id", parseInt(topicId!))
         .single();
 
-      if (topicData) {
-        setTopicTitle(topicData.title);
-      }
+      if (topicData) setTopicTitle(topicData.title);
 
-      // ✅ Corrigido: define avatar padrão de forma segura
       setSections(
         (sectionsData || []).map((section: any) => ({
           ...section,
@@ -77,34 +73,70 @@ const TheoryLesson = () => {
     checkAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        navigate("/auth");
-      }
+      if (!session) navigate("/auth");
     });
 
     return () => subscription.unsubscribe();
   }, [navigate, topicId]);
 
+  // ✅ Listener de scroll e teclado
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
+    const sectionHeight = window.innerHeight;
+
     const handleScroll = () => {
-      const scrollPosition = container.scrollTop;
-      const sectionHeight = window.innerHeight;
-      const newSection = Math.round(scrollPosition / sectionHeight);
-      setCurrentSection(newSection);
+      if (isAutoScrolling.current) return; // evita conflito durante scroll automático
+
+      window.requestAnimationFrame(() => {
+        const newSection = Math.round(container.scrollTop / sectionHeight);
+        if (newSection !== currentSection) setCurrentSection(newSection);
+      });
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown" || e.key === "PageDown") {
+        e.preventDefault();
+        scrollToSection(Math.min(currentSection + 1, sections.length - 1));
+      } else if (e.key === "ArrowUp" || e.key === "PageUp") {
+        e.preventDefault();
+        scrollToSection(Math.max(currentSection - 1, 0));
+      }
     };
 
     container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, []);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [currentSection, sections.length]);
+
+  // ✅ Scroll com bloqueio temporário de re-renderização
+  const scrollToSection = (index: number) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    isAutoScrolling.current = true; // evita duplo update
+
+    container.scrollTo({
+      top: index * window.innerHeight,
+      behavior: "smooth",
+    });
+
+    // Atualiza currentSection apenas quando a animação terminar (~400ms)
+    setTimeout(() => {
+      setCurrentSection(index);
+      isAutoScrolling.current = false; // libera novamente
+    }, 400);
+  };
 
   const handleSkipTheory = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
-    // Check if already completed or skipped
     const { data: progressData } = await supabase
       .from("topic_progress")
       .select("theory_completed, theory_skipped")
@@ -115,7 +147,6 @@ const TheoryLesson = () => {
     const alreadyProcessed = progressData?.theory_completed || progressData?.theory_skipped;
 
     if (!alreadyProcessed) {
-      // Award 30 XP for skipping (first time only)
       const { data: profile } = await supabase
         .from("profiles")
         .select("xp, level")
@@ -126,25 +157,15 @@ const TheoryLesson = () => {
         const newXP = profile.xp + 30;
         const newLevel = Math.floor(newXP / 100) + 1;
 
-        await supabase
-          .from("profiles")
-          .update({ xp: newXP, level: newLevel })
-          .eq("id", session.user.id);
-
+        await supabase.from("profiles").update({ xp: newXP, level: newLevel }).eq("id", session.user.id);
         await updateDailyProgress(30);
       }
     }
 
-    // Mark theory as skipped
     await supabase
       .from("topic_progress")
       .upsert(
-        {
-          user_id: session.user.id,
-          topic_id: parseInt(topicId!),
-          theory_skipped: true,
-          lessons_completed: 0,
-        },
+        { user_id: session.user.id, topic_id: parseInt(topicId!), theory_skipped: true, lessons_completed: 0 },
         { onConflict: "user_id,topic_id" }
       );
 
@@ -156,7 +177,6 @@ const TheoryLesson = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
-    // Check if already completed
     const { data: progressData } = await supabase
       .from("topic_progress")
       .select("theory_completed")
@@ -167,7 +187,6 @@ const TheoryLesson = () => {
     const alreadyCompleted = progressData?.theory_completed;
 
     if (!alreadyCompleted) {
-      // Award 30 XP for completing theory (first time only)
       const { data: profile } = await supabase
         .from("profiles")
         .select("xp, level")
@@ -178,49 +197,27 @@ const TheoryLesson = () => {
         const newXP = profile.xp + 30;
         const newLevel = Math.floor(newXP / 100) + 1;
 
-        await supabase
-          .from("profiles")
-          .update({ xp: newXP, level: newLevel })
-          .eq("id", session.user.id);
-
+        await supabase.from("profiles").update({ xp: newXP, level: newLevel }).eq("id", session.user.id);
         await updateDailyProgress(30);
       }
     }
 
-    // Mark theory as completed
     await supabase
       .from("topic_progress")
       .upsert(
-        {
-          user_id: session.user.id,
-          topic_id: parseInt(topicId!),
-          theory_completed: true,
-          lessons_completed: 0,
-        },
+        { user_id: session.user.id, topic_id: parseInt(topicId!), theory_completed: true, lessons_completed: 0 },
         { onConflict: "user_id,topic_id" }
       );
 
     if (returnToLesson) {
       toast.success("Voltando para a lição");
       const progress = location.state?.lessonProgress;
-      if (progress) {
-        localStorage.setItem(`lessonProgress_${topicId}`, JSON.stringify(progress));
-      }
+      if (progress) localStorage.setItem(`lessonProgress_${topicId}`, JSON.stringify(progress));
       navigate(`/lesson/${topicId}`, { state: { resumeProgress: progress } });
     } else {
       toast.success(alreadyCompleted ? "Indo para lições práticas" : "+30 XP ganhos!");
       navigate(`/lesson/${topicId}`);
     }
-  };
-
-  const scrollToSection = (index: number) => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    container.scrollTo({
-      top: index * window.innerHeight,
-      behavior: "smooth",
-    });
   };
 
   if (loading) {
@@ -248,7 +245,7 @@ const TheoryLesson = () => {
 
   return (
     <div className="min-h-screen bg-background relative">
-      {/* Header with progress */}
+      {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between mb-2">
@@ -263,9 +260,8 @@ const TheoryLesson = () => {
                   size="sm"
                   onClick={() => {
                     const progress = location.state?.lessonProgress;
-                    if (progress) {
+                    if (progress)
                       localStorage.setItem(`lessonProgress_${topicId}`, JSON.stringify(progress));
-                    }
                     navigate(`/lesson/${topicId}`, { state: { resumeProgress: progress } });
                   }}
                 >
@@ -287,7 +283,7 @@ const TheoryLesson = () => {
         </div>
       </div>
 
-      {/* Scroll container */}
+      {/* Conteúdo principal */}
       <div
         ref={scrollContainerRef}
         className="h-screen overflow-y-scroll snap-y snap-mandatory pt-20"
@@ -321,7 +317,7 @@ const TheoryLesson = () => {
         ))}
       </div>
 
-      {/* Avatar do locutor dinâmico */}
+      {/* Avatar do locutor */}
       <div
         className="
           fixed bottom-4 left-4 z-20
@@ -335,7 +331,12 @@ const TheoryLesson = () => {
             overflow-hidden flex items-center justify-center
           "
         >
-          <img src={avatarSrc} alt="Locutor LexLingo" className="object-cover w-full h-full" />
+          <img
+            key={`${currentSection}-${sections[currentSection]?.avatar_id}`}
+            src={avatarSrc}
+            alt={`Locutor da seção ${currentSection + 1}`}
+            className="object-cover w-full h-full transition-opacity duration-300 ease-in-out"
+          />
         </div>
       </div>
     </div>
