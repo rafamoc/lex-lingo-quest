@@ -19,16 +19,16 @@ interface Question {
   explanation: string;
 }
 
-const questions: Question[] = [
+/* ===============================
+   QUESTION BANK (HARDCODED)
+   =============================== */
+
+// Questões para TODOS os tópicos (menos compensação)
+const genericQuestions: Question[] = [
   {
     id: 1,
     question: "Qual das opções abaixo NÃO é uma fonte de obrigação no Direito Civil?",
-    options: [
-      "Contrato",
-      "Ato ilícito",
-      "Declaração de vontade unilateral",
-      "Sentença penal condenatória",
-    ],
+    options: ["Contrato", "Ato ilícito", "Declaração de vontade unilateral", "Sentença penal condenatória"],
     correctAnswer: 3,
     explanation:
       "A sentença penal condenatória não é considerada uma fonte de obrigação no Direito Civil. As principais fontes são: contratos, atos ilícitos e declaração de vontade unilateral.",
@@ -61,203 +61,261 @@ const questions: Question[] = [
   },
 ];
 
+// Questões EXCLUSIVAS da skill Compensação (topic_id = 23)
+const compensacaoQuestions: Question[] = [
+  {
+    id: 101,
+    question: "O que é compensação no Direito das Obrigações?",
+    options: [
+      "Modalidade de novação",
+      "Forma de pagamento indireto que extingue obrigações recíprocas",
+      "Redução proporcional da dívida mediante acordo",
+      "Substituição do devedor por terceiro",
+    ],
+    correctAnswer: 1,
+    explanation:
+      "A compensação extingue obrigações quando duas pessoas são ao mesmo tempo credoras e devedoras entre si, funcionando como pagamento indireto.",
+  },
+  {
+    id: 102,
+    question: "Quais são os requisitos da compensação legal?",
+    options: [
+      "Dívidas vencidas, líquidas e de coisas fungíveis",
+      "Acordo prévio entre as partes",
+      "Origem contratual idêntica",
+      "Autorização judicial",
+    ],
+    correctAnswer: 0,
+    explanation:
+      "A compensação legal exige créditos líquidos, vencidos e de coisas fungíveis (art. 368 do CC).",
+  },
+  {
+    id: 103,
+    question: "Qual situação abaixo representa compensação?",
+    options: [
+      "A paga R$ 500 para B no vencimento",
+      "A perdoa a dívida de B",
+      "A deve R$ 300 para B e B deve R$ 300 para A",
+      "A transfere um crédito para C",
+    ],
+    correctAnswer: 2,
+    explanation:
+      "Se A e B são reciprocamente credores e devedores em valores equivalentes, ocorre compensação e ambas as dívidas se extinguem.",
+  },
+];
+
+/* ===============================
+   SELECT QUESTION SET BY TOPIC
+   =============================== */
+const getQuestionsFor = (topicId: number): Question[] => {
+  if (topicId === 23) {
+    return compensacaoQuestions; // somente compensação
+  }
+  return genericQuestions; // todos os demais tópicos
+};
+
 const Lesson = () => {
   const navigate = useNavigate();
   const { topicId } = useParams();
   const location = useLocation();
+
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [answeredQuestions, setAnsweredQuestions] = useState(0);
 
-  // Resume progress if returning from theory
+  const topicIdNum = parseInt(topicId || "0");
+
+  /* ===============================
+      Load correct question bank
+     =============================== */
   useEffect(() => {
-    // Try location.state first
-    if (location.state?.resumeProgress) {
-      const { currentQuestion: saved, selectedAnswer: savedAnswer, correctAnswers: savedCorrect, showFeedback: savedFeedback } = location.state.resumeProgress;
-      setCurrentQuestion(saved);
-      setSelectedAnswer(savedAnswer);
-      setCorrectAnswers(savedCorrect);
-      setShowFeedback(savedFeedback);
-      // Clear localStorage after restoring
-      localStorage.removeItem(`lessonProgress_${topicId}`);
-    } else {
-      // Fallback to localStorage if location.state is not available
-      const savedProgress = localStorage.getItem(`lessonProgress_${topicId}`);
-      if (savedProgress) {
-        const { currentQuestion: saved, selectedAnswer: savedAnswer, correctAnswers: savedCorrect, showFeedback: savedFeedback } = JSON.parse(savedProgress);
-        setCurrentQuestion(saved);
-        setSelectedAnswer(savedAnswer);
-        setCorrectAnswers(savedCorrect);
-        setShowFeedback(savedFeedback);
-        localStorage.removeItem(`lessonProgress_${topicId}`);
-      }
-    }
-  }, [location.state, topicId]);
+    const chosen = getQuestionsFor(topicIdNum);
+    setQuestions(chosen);
+  }, [topicIdNum]);
 
+  /* ===============================
+      Restore lesson progress
+     =============================== */
+  useEffect(() => {
+    if (location.state?.resumeProgress) {
+      const saved = location.state.resumeProgress;
+
+      setCurrentQuestion(saved.currentQuestion);
+      setSelectedAnswer(saved.selectedAnswer);
+      setCorrectAnswers(saved.correctAnswers);
+      setShowFeedback(saved.showFeedback);
+
+      localStorage.removeItem(`lessonProgress_${topicIdNum}`);
+      return;
+    }
+
+    const savedLocal = localStorage.getItem(`lessonProgress_${topicIdNum}`);
+    if (savedLocal) {
+      const saved = JSON.parse(savedLocal);
+      setCurrentQuestion(saved.currentQuestion);
+      setSelectedAnswer(saved.selectedAnswer);
+      setCorrectAnswers(saved.correctAnswers);
+      setShowFeedback(saved.showFeedback);
+      localStorage.removeItem(`lessonProgress_${topicIdNum}`);
+    }
+  }, [location.state, topicIdNum]);
+
+  /* ===============================
+      Auth check
+     =============================== */
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth");
-      }
+      if (!session) navigate("/auth");
     };
     checkAuth();
   }, [navigate]);
-  const [answeredQuestions, setAnsweredQuestions] = useState(0);
+
+  if (questions.length === 0) {
+    return <div className="p-6 text-center">Carregando questões...</div>;
+  }
 
   const question = questions[currentQuestion];
   const progress = ((currentQuestion + 1) / questions.length) * 100;
+  const isCorrect = selectedAnswer === question.correctAnswer;
 
+  /* ===============================
+      Handlers
+     =============================== */
   const handleAnswerSelect = (index: number) => {
-    if (showFeedback) return;
-    setSelectedAnswer(index);
+    if (!showFeedback) setSelectedAnswer(index);
   };
 
   const handleCheckAnswer = () => {
     if (selectedAnswer === null) return;
-  
+
     setShowFeedback(true);
     setAnsweredQuestions(prev => prev + 1);
-  
-    if (selectedAnswer === question.correctAnswer) {
-      // toca som de acerto
+
+    if (isCorrect) {
       correctSound.currentTime = 0;
-      correctSound.play().catch(() => {}); // evita erro se o navegador bloquear
-  
+      correctSound.play().catch(() => {});
       setCorrectAnswers(prev => prev + 1);
+
       toast.success("Correto! 🎉", {
         description: "+10 XP",
       });
     } else {
-      // toca som de erro
       wrongSound.currentTime = 0;
-      wrongSound.play().catch(() => {}); // idem acima
-  
+      wrongSound.play().catch(() => {});
       toast.error("Ops! Tente novamente", {
         description: "Revise a explicação abaixo",
       });
     }
   };
 
+ 
+  
   const handleNextQuestion = async () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
       setSelectedAnswer(null);
       setShowFeedback(false);
-    } else {
-      // Save progress to database
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        navigate("/auth");
-        return;
-      }
-
-      const xpEarned = correctAnswers * 10;
-      
-      // Get current profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-
-      if (profile) {
-        const newXP = profile.xp + xpEarned;
-        const newLevel = Math.floor(newXP / 300) + 1;
-
-        // Update profile
-        await supabase
-          .from("profiles")
-          .update({
-            xp: newXP,
-            level: newLevel,
-            last_active: new Date().toISOString(),
-          })
-          .eq("id", session.user.id);
-
-        // Update daily progress
-        await updateDailyProgress(xpEarned);
-
-        // Update or insert topic progress
-        const currentTopicId = parseInt(topicId || "1");
-        const { data: existingProgress } = await supabase
-          .from("topic_progress")
-          .select("*")
-          .eq("user_id", session.user.id)
-          .eq("topic_id", currentTopicId)
-          .maybeSingle();
-
-        if (existingProgress) {
-          await supabase
-            .from("topic_progress")
-            .update({
-              lessons_completed: existingProgress.lessons_completed + 1,
-            })
-            .eq("id", existingProgress.id);
-        } else {
-          await supabase
-            .from("topic_progress")
-            .insert({
-              user_id: session.user.id,
-              topic_id: currentTopicId,
-              lessons_completed: 1,
-            });
-        }
-      }
-
-      // Get track_id from topic
-      const { data: topicData } = await supabase
-        .from("topics")
-        .select("track_id")
-        .eq("id", parseInt(topicId || "1"))
-        .single();
-
-      // Navigate to lesson complete screen
-      navigate("/lesson-complete", { 
-        state: { 
-          xpEarned, 
-          trackId: topicData?.track_id || 1 
-        } 
-      });
+      return;
     }
+  
+    // ========================
+    // FINAL DA LIÇÃO
+    // ========================
+  
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return navigate("/auth");
+  
+    const xpEarned = correctAnswers * 10;
+  
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", session.user.id)
+      .single();
+  
+    if (profile) {
+      const newXP = profile.xp + xpEarned;
+      const newLevel = Math.floor(newXP / 300) + 1;
+  
+      await supabase
+        .from("profiles")
+        .update({
+          xp: newXP,
+          level: newLevel,
+          last_active: new Date().toISOString(),
+        })
+        .eq("id", session.user.id);
+  
+      await updateDailyProgress(xpEarned);
+  
+      const { data: existingProgress } = await supabase
+        .from("topic_progress")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .eq("topic_id", topicIdNum)
+        .maybeSingle();
+  
+      if (existingProgress) {
+        await supabase
+          .from("topic_progress")
+          .update({
+            lessons_completed: existingProgress.lessons_completed + 1,
+          })
+          .eq("id", existingProgress.id);
+      } else {
+        await supabase
+          .from("topic_progress")
+          .insert({
+            user_id: session.user.id,
+            topic_id: topicIdNum,
+            lessons_completed: 1,
+          });
+      }
+    }
+  
+    // 🔥 RESTAURADO: pegar o track_id para redirecionar corretamente
+    const { data: topicData } = await supabase
+      .from("topics")
+      .select("track_id")
+      .eq("id", topicIdNum)
+      .single();
+  
+    navigate("/lesson-complete", {
+      state: {
+        xpEarned,
+        trackId: topicData?.track_id ?? null,
+      },
+    });
   };
+  
 
-  const isCorrect = selectedAnswer === question.correctAnswer;
 
+
+  /* ===============================
+      UI
+     =============================== */
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-          <Button
-              variant="ghost"
-              size="icon"
-              onClick={async () => {
-                // obtém o tópico atual
-                const { data: topic } = await supabase
-                  .from("topics")
-                  .select("track_id")
-                  .eq("id", parseInt(topicId))
-                  .single();
-
-                if (topic?.track_id) {
-                  navigate(`/topics/${topic.track_id}`);
-                } else {
-                  navigate("/dashboard"); // fallback
-                }
-              }}
-            >
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
+
             <div className="flex-1">
               <Progress value={progress} className="h-3" />
             </div>
+
             <span className="text-sm font-medium text-muted-foreground">
               {currentQuestion + 1}/{questions.length}
             </span>
+
             <Button
               variant="outline"
               size="sm"
@@ -268,13 +326,11 @@ const Lesson = () => {
                   correctAnswers,
                   showFeedback,
                 };
-                // Save to localStorage as backup
-                localStorage.setItem(`lessonProgress_${topicId}`, JSON.stringify(progress));
-                navigate(`/theory/${topicId}`, { 
-                  state: { 
-                    returnToLesson: true,
-                    lessonProgress: progress
-                  }
+
+                localStorage.setItem(`lessonProgress_${topicIdNum}`, JSON.stringify(progress));
+
+                navigate(`/theory/${topicIdNum}`, {
+                  state: { returnToLesson: true, lessonProgress: progress },
                 });
               }}
             >
@@ -284,13 +340,11 @@ const Lesson = () => {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main */}
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         <Card className="animate-slide-in-up">
           <CardContent className="pt-8 pb-8">
-            <h2 className="text-2xl font-bold text-foreground mb-8">
-              {question.question}
-            </h2>
+            <h2 className="text-2xl font-bold mb-8">{question.question}</h2>
 
             <div className="space-y-3">
               {question.options.map((option, index) => {
@@ -315,13 +369,9 @@ const Lesson = () => {
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-foreground">{option}</span>
-                      {showCorrect && (
-                        <CheckCircle2 className="w-6 h-6 text-success flex-shrink-0 ml-2" />
-                      )}
-                      {showIncorrect && (
-                        <XCircle className="w-6 h-6 text-destructive flex-shrink-0 ml-2" />
-                      )}
+                      <span className="font-medium">{option}</span>
+                      {showCorrect && <CheckCircle2 className="w-6 h-6 text-success" />}
+                      {showIncorrect && <XCircle className="w-6 h-6 text-destructive" />}
                     </div>
                   </button>
                 );
@@ -330,14 +380,16 @@ const Lesson = () => {
 
             {showFeedback && (
               <div
-                className={`mt-6 p-4 rounded-xl animate-slide-in-up ${
+                className={`mt-6 p-4 rounded-xl ${
                   isCorrect ? "bg-success/10" : "bg-destructive/10"
-                }`}
+                } animate-slide-in-up`}
               >
-                <p className="font-medium text-foreground mb-2">
+                <p className="font-medium mb-2">
                   {isCorrect ? "✓ Excelente!" : "✗ Não é bem assim..."}
                 </p>
-                <p className="text-sm text-muted-foreground">{question.explanation}</p>
+                <p className="text-sm text-muted-foreground">
+                  {question.explanation}
+                </p>
               </div>
             )}
 
@@ -347,26 +399,18 @@ const Lesson = () => {
                   onClick={handleCheckAnswer}
                   disabled={selectedAnswer === null}
                   className="w-full h-12 text-base font-semibold"
-                  size="lg"
                 >
                   Verificar Resposta
                 </Button>
               ) : (
-                <Button
-                  onClick={handleNextQuestion}
-                  className="w-full h-12 text-base font-semibold"
-                  size="lg"
-                >
-                  {currentQuestion < questions.length - 1
-                    ? "Próxima Pergunta"
-                    : "Finalizar Lição"}
+                <Button onClick={handleNextQuestion} className="w-full h-12 text-base font-semibold">
+                  {currentQuestion < questions.length - 1 ? "Próxima Pergunta" : "Finalizar Lição"}
                 </Button>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Stats */}
         {answeredQuestions > 0 && (
           <div className="mt-6 flex justify-center gap-4 text-sm text-muted-foreground">
             <span>Acertos: {correctAnswers}</span>
