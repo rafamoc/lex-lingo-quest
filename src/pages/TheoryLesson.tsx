@@ -139,7 +139,7 @@ const TheoryLesson = () => {
     if (sections.length === 0) return;
 
     const currentAudioId = sections[currentSection]?.audio_id || 1;
-    const audioFile = `/audios/audio_${currentAudioId}.mp3`;
+    const audioFile = `/audios/audio_${currentAudioId}.ogg`;
 
     if (!audioRef.current) {
       audioRef.current = new Audio(audioFile);
